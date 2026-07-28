@@ -1,0 +1,90 @@
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+import { dirname, join } from "node:path"
+import {
+  buildCatalog,
+  frontierOf,
+  resolveTier,
+  shouldSkip,
+  parseTier,
+  DEFAULTS,
+  type RouterConfig,
+} from "../src/model-router/core.ts"
+
+const here = dirname(fileURLToPath(import.meta.url))
+const providers = JSON.parse(readFileSync(join(here, "fixtures/providers.json"), "utf8")).providers
+
+const cfg = (o: Partial<RouterConfig> = {}): RouterConfig => ({ ...DEFAULTS, ...o })
+
+let passed = 0
+let failed = 0
+const check = (name: string, cond: boolean, detail = "") => {
+  if (cond) passed++
+  else failed++
+  console.log(`${cond ? "  ok  " : "FAIL  "}${name}${!cond && detail ? `  -> got ${detail}` : ""}`)
+}
+
+const catalog = buildCatalog(providers, cfg())
+console.log(`\ncatalog: ${catalog.length} routable  |  frontier: ${frontierOf(catalog).length}\n`)
+
+console.log("— catalog filters —")
+check("drops image-output models", !catalog.some((m) => /image/.test(m.modelID)))
+check("drops audio-output models", !catalog.some((m) => /realtime|live/.test(m.modelID)))
+check("drops non-toolcall models", !catalog.some((m) => /embedding/.test(m.modelID)))
+check("drops denied families", !catalog.some((m) => /robotics|deep-research/.test(m.modelID)))
+check(
+  "dedupes dated aliases",
+  !catalog.some((m) => /-\d{8}$/.test(m.modelID) && catalog.some((o) => o.modelID === m.modelID.replace(/-\d{8}$/, ""))),
+)
+check("sorted by output cost", catalog.every((m, i) => i === 0 || catalog[i - 1].outputCost <= m.outputCost))
+
+console.log("\n— tier resolution honours preferences —")
+const heavy = resolveTier("heavy", catalog, cfg())
+const standard = resolveTier("standard", catalog, cfg())
+const light = resolveTier("light", catalog, cfg())
+check("heavy -> claude-opus-5", heavy?.id === "anthropic/claude-opus-5", heavy?.id)
+check("standard -> claude-sonnet-4-6", standard?.id === "anthropic/claude-sonnet-4-6", standard?.id)
+check("light -> kimi-k2.6", light?.id === "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6", light?.id)
+
+console.log("\n— self-healing when a preferred model disappears —")
+const orphaned = cfg({ tiers: { ...DEFAULTS.tiers, heavy: ["anthropic/claude-opus-does-not-exist"] } })
+const healed = resolveTier("heavy", catalog, orphaned)
+check("falls back to a live model", !!healed && healed.id !== "anthropic/claude-opus-does-not-exist", healed?.id)
+check("fallback is the priciest frontier model", healed?.outputCost === frontierOf(catalog).at(-1)?.outputCost)
+console.log(`        picked: ${healed?.id}`)
+
+console.log("\n— allow / deny —")
+const allowIds = ["anthropic/claude-haiku-4-5", "anthropic/claude-sonnet-5", "anthropic/claude-opus-5"]
+const allowCfg = cfg({ allow: allowIds })
+const restricted = buildCatalog(providers, allowCfg)
+check("allowlist restricts catalog", restricted.length === 3, String(restricted.length))
+check("allowlist heavy -> opus-5", resolveTier("heavy", restricted, allowCfg)?.modelID === "claude-opus-5")
+check(
+  "allowlist standard falls through to sonnet-5",
+  resolveTier("standard", restricted, allowCfg)?.modelID === "claude-sonnet-5",
+  resolveTier("standard", restricted, allowCfg)?.modelID,
+)
+check("allowlist light falls through to haiku", resolveTier("light", restricted, allowCfg)?.modelID === "claude-haiku-4-5")
+
+const globbed = buildCatalog(providers, cfg({ allow: ["anthropic/*"] }))
+check("glob allowlist keeps one provider", globbed.length > 0 && globbed.every((m) => m.providerID === "anthropic"))
+check("deny glob removes matches", !buildCatalog(providers, cfg({ deny: ["*opus*"] })).some((m) => /opus/.test(m.modelID)))
+check("empty allow keeps everything", buildCatalog(providers, cfg({ allow: [] })).length === catalog.length)
+
+console.log("\n— skip fast-path —")
+for (const word of ["yes", "ok", "continue", "go on", "thanks"]) {
+  check(`skips "${word}"`, shouldSkip(word, cfg()))
+}
+check("skips short prompts", shouldSkip("fix it", cfg()))
+check("routes real prompts", !shouldSkip("refactor the routing layer to react router v7", cfg()))
+
+console.log("\n— classifier parsing —")
+check("parses bare json", parseTier('{"tier":"light","why":"rename"}')?.tier === "light")
+check("parses fenced json", parseTier('```json\n{"tier":"heavy","why":"migration"}\n```')?.tier === "heavy")
+check("parses json with prose around it", parseTier('Sure! {"tier":"standard","why":"x"} done')?.tier === "standard")
+check("rejects unknown tier", parseTier('{"tier":"nuclear"}') === undefined)
+check("rejects non-json", parseTier("I think this is heavy") === undefined)
+check("rejects malformed json", parseTier('{"tier":') === undefined)
+
+console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
+process.exit(failed ? 1 : 0)

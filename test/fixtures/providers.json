@@ -1,0 +1,1386 @@
+{
+ "providers": [
+  {
+   "id": "anthropic",
+   "name": "Anthropic: Cloudflare AI Gateway",
+   "models": {
+    "claude-sonnet-4-6": {
+     "id": "claude-sonnet-4-6",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-sonnet-4-6",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Sonnet 4.6",
+     "family": "claude-sonnet",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cache": {
+       "read": 0.3,
+       "write": 3.75
+      }
+     },
+     "limit": {
+      "context": 500000,
+      "output": 64000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-02-17",
+     "variants": {
+      "low": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "low"
+      },
+      "medium": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "medium"
+      },
+      "high": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "high"
+      },
+      "max": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "max"
+      }
+     }
+    },
+    "claude-haiku-4-5": {
+     "id": "claude-haiku-4-5",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-haiku-4-5",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Haiku 4.5 (latest)",
+     "family": "claude-haiku",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 1,
+      "output": 5,
+      "cache": {
+       "read": 0.1,
+       "write": 1.25
+      }
+     },
+     "limit": {
+      "context": 200000,
+      "output": 64000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2025-10-15",
+     "variants": {
+      "high": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 16000
+       }
+      },
+      "max": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 31999
+       }
+      }
+     }
+    },
+    "claude-opus-4-6": {
+     "id": "claude-opus-4-6",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-opus-4-6",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Opus 4.6",
+     "family": "claude-opus",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 5,
+      "output": 25,
+      "cache": {
+       "read": 0.5,
+       "write": 6.25
+      }
+     },
+     "limit": {
+      "context": 500000,
+      "output": 128000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-02-04",
+     "variants": {
+      "low": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "low"
+      },
+      "medium": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "medium"
+      },
+      "high": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "high"
+      },
+      "max": {
+       "thinking": {
+        "type": "adaptive"
+       },
+       "effort": "max"
+      }
+     }
+    },
+    "claude-sonnet-4-5": {
+     "id": "claude-sonnet-4-5",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-sonnet-4-5",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Sonnet 4.5 (latest)",
+     "family": "claude-sonnet",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cache": {
+       "read": 0.3,
+       "write": 3.75
+      }
+     },
+     "limit": {
+      "context": 1000000,
+      "output": 64000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2025-09-29",
+     "variants": {
+      "high": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 16000
+       }
+      },
+      "max": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 31999
+       }
+      }
+     }
+    },
+    "claude-sonnet-4-5-20250929": {
+     "id": "claude-sonnet-4-5-20250929",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-sonnet-4-5-20250929",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Sonnet 4.5",
+     "family": "claude-sonnet",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 3,
+      "output": 15,
+      "cache": {
+       "read": 0.3,
+       "write": 3.75
+      }
+     },
+     "limit": {
+      "context": 1000000,
+      "output": 64000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2025-09-29",
+     "variants": {
+      "high": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 16000
+       }
+      },
+      "max": {
+       "thinking": {
+        "type": "enabled",
+        "budgetTokens": 31999
+       }
+      }
+     }
+    },
+    "claude-sonnet-5": {
+     "id": "claude-sonnet-5",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-sonnet-5",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Sonnet 5",
+     "family": "claude-sonnet",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 2,
+      "output": 10,
+      "cache": {
+       "read": 0.2,
+       "write": 2.5
+      }
+     },
+     "limit": {
+      "context": 1000000,
+      "output": 128000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-06-29",
+     "variants": {
+      "low": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "low"
+      },
+      "medium": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "medium"
+      },
+      "high": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "high"
+      },
+      "xhigh": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "xhigh"
+      },
+      "max": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "max"
+      }
+     }
+    },
+    "claude-opus-5": {
+     "id": "claude-opus-5",
+     "providerID": "anthropic",
+     "api": {
+      "id": "claude-opus-5",
+      "url": "",
+      "npm": "@ai-sdk/anthropic"
+     },
+     "name": "Claude Opus 5",
+     "family": "claude-opus",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 5,
+      "output": 25,
+      "cache": {
+       "read": 0.5,
+       "write": 6.25
+      }
+     },
+     "limit": {
+      "context": 300000,
+      "output": 128000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-07-24",
+     "variants": {
+      "low": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "low"
+      },
+      "medium": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "medium"
+      },
+      "high": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "high"
+      },
+      "xhigh": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "xhigh"
+      },
+      "max": {
+       "thinking": {
+        "type": "adaptive",
+        "display": "summarized"
+       },
+       "effort": "max"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "openai",
+   "name": "OpenAI: Cloudflare AI Gateway",
+   "models": {
+    "gpt-image-2": {
+     "id": "gpt-image-2",
+     "providerID": "openai",
+     "api": {
+      "id": "gpt-image-2",
+      "url": "",
+      "npm": "@ai-sdk/openai"
+     },
+     "name": "gpt-image-2",
+     "family": "gpt-image",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": false,
+      "attachment": true,
+      "toolcall": false,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": false,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 5,
+      "output": 30,
+      "cache": {
+       "read": 1.25,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 0,
+      "input": 0,
+      "output": 0
+     },
+     "status": "active",
+     "options": {
+      "store": false
+     },
+     "headers": {},
+     "release_date": "2026-04-21",
+     "variants": {}
+    },
+    "gpt-realtime-2.1": {
+     "id": "gpt-realtime-2.1",
+     "providerID": "openai",
+     "api": {
+      "id": "gpt-realtime-2.1",
+      "url": "",
+      "npm": "@ai-sdk/openai"
+     },
+     "name": "GPT-Realtime-2.1",
+     "family": "gpt",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": true,
+       "image": true,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": true,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 4,
+      "output": 24,
+      "cache": {
+       "read": 0.4,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 128000,
+      "input": 96000,
+      "output": 32000
+     },
+     "status": "active",
+     "options": {
+      "store": false
+     },
+     "headers": {},
+     "release_date": "2026-07-06",
+     "variants": {
+      "minimal": {
+       "reasoningEffort": "minimal",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "low": {
+       "reasoningEffort": "low",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "medium": {
+       "reasoningEffort": "medium",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "high": {
+       "reasoningEffort": "high",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "xhigh": {
+       "reasoningEffort": "xhigh",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      }
+     }
+    },
+    "gpt-5.6": {
+     "id": "gpt-5.6",
+     "providerID": "openai",
+     "api": {
+      "id": "gpt-5.6",
+      "url": "",
+      "npm": "@ai-sdk/openai"
+     },
+     "name": "GPT-5.6",
+     "family": "gpt-sol",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 5,
+      "output": 30,
+      "cache": {
+       "read": 0.5,
+       "write": 6.25
+      }
+     },
+     "limit": {
+      "context": 272000,
+      "input": 260000,
+      "output": 128000
+     },
+     "status": "active",
+     "options": {
+      "store": false
+     },
+     "headers": {},
+     "release_date": "2026-07-09",
+     "variants": {
+      "none": {
+       "reasoningEffort": "none",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "low": {
+       "reasoningEffort": "low",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "medium": {
+       "reasoningEffort": "medium",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "high": {
+       "reasoningEffort": "high",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "xhigh": {
+       "reasoningEffort": "xhigh",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "max": {
+       "reasoningEffort": "max",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      }
+     }
+    },
+    "gpt-5-nano": {
+     "id": "gpt-5-nano",
+     "providerID": "openai",
+     "api": {
+      "id": "gpt-5-nano",
+      "url": "",
+      "npm": "@ai-sdk/openai"
+     },
+     "name": "GPT-5 Nano",
+     "family": "gpt-nano",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 0.05,
+      "output": 0.4,
+      "cache": {
+       "read": 0.005,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 400000,
+      "input": 272000,
+      "output": 128000
+     },
+     "status": "active",
+     "options": {
+      "store": false
+     },
+     "headers": {},
+     "release_date": "2025-08-07",
+     "variants": {
+      "minimal": {
+       "reasoningEffort": "minimal",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "low": {
+       "reasoningEffort": "low",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "medium": {
+       "reasoningEffort": "medium",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      },
+      "high": {
+       "reasoningEffort": "high",
+       "reasoningSummary": "auto",
+       "include": [
+        "reasoning.encrypted_content"
+       ]
+      }
+     }
+    },
+    "text-embedding-3-small": {
+     "id": "text-embedding-3-small",
+     "providerID": "openai",
+     "api": {
+      "id": "text-embedding-3-small",
+      "url": "",
+      "npm": "@ai-sdk/openai"
+     },
+     "name": "text-embedding-3-small",
+     "family": "text-embedding",
+     "capabilities": {
+      "temperature": false,
+      "reasoning": false,
+      "attachment": false,
+      "toolcall": false,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 0.02,
+      "output": 0,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 8191,
+      "output": 1536
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2024-01-25",
+     "variants": {}
+    }
+   }
+  },
+  {
+   "id": "google",
+   "name": "Google AI: Cloudflare AI Gateway",
+   "models": {
+    "gemini-3.5-flash-lite": {
+     "id": "gemini-3.5-flash-lite",
+     "providerID": "google",
+     "api": {
+      "id": "gemini-3.5-flash-lite",
+      "url": "",
+      "npm": "@ai-sdk/google"
+     },
+     "name": "Gemini 3.5 Flash Lite",
+     "family": "gemini-flash-lite",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": true,
+       "image": true,
+       "video": true,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 0.3,
+      "output": 2.5,
+      "cache": {
+       "read": 0.03,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 1048576,
+      "output": 65536
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-07-21",
+     "variants": {
+      "minimal": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "minimal"
+       }
+      },
+      "low": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "low"
+       }
+      },
+      "medium": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "medium"
+       }
+      },
+      "high": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "high"
+       }
+      }
+     }
+    },
+    "gemini-robotics-er-1.6-preview": {
+     "id": "gemini-robotics-er-1.6-preview",
+     "providerID": "google",
+     "api": {
+      "id": "gemini-robotics-er-1.6-preview",
+      "url": "",
+      "npm": "@ai-sdk/google"
+     },
+     "name": "Gemini Robotics-ER 1.6 Preview",
+     "family": "gemini",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": true,
+       "image": true,
+       "video": true,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 1,
+      "output": 5,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 131072,
+      "output": 65536
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-04-14",
+     "variants": {
+      "high": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingBudget": 16000
+       }
+      },
+      "max": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingBudget": 31999
+       }
+      }
+     }
+    },
+    "gemini-3.1-flash-live-preview": {
+     "id": "gemini-3.1-flash-live-preview",
+     "providerID": "google",
+     "api": {
+      "id": "gemini-3.1-flash-live-preview",
+      "url": "",
+      "npm": "@ai-sdk/google"
+     },
+     "name": "Gemini 3.1 Flash Live Preview",
+     "family": "gemini-flash",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": true,
+       "image": true,
+       "video": true,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": true,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 0.75,
+      "output": 4.5,
+      "cache": {
+       "read": 0,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 131072,
+      "output": 65536
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-03-26",
+     "variants": {
+      "minimal": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "minimal"
+       }
+      },
+      "low": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "low"
+       }
+      },
+      "medium": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "medium"
+       }
+      },
+      "high": {
+       "thinkingConfig": {
+        "includeThoughts": true,
+        "thinkingLevel": "high"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "xai",
+   "name": "xAI: Cloudflare AI Gateway",
+   "models": {
+    "grok-4.5": {
+     "id": "grok-4.5",
+     "providerID": "xai",
+     "api": {
+      "id": "grok-4.5",
+      "url": "",
+      "npm": "@ai-sdk/xai"
+     },
+     "name": "Grok 4.5",
+     "family": "grok",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 2,
+      "output": 6,
+      "cache": {
+       "read": 0.3,
+       "write": 0
+      },
+      "tiers": [
+       {
+        "input": 4,
+        "output": 12,
+        "cache": {
+         "read": 1,
+         "write": 0
+        },
+        "tier": {
+         "type": "context",
+         "size": 200000
+        }
+       }
+      ],
+      "experimentalOver200K": {
+       "input": 4,
+       "output": 12,
+       "cache": {
+        "read": 1,
+        "write": 0
+       }
+      }
+     },
+     "limit": {
+      "context": 500000,
+      "output": 500000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-07-08",
+     "variants": {
+      "low": {
+       "reasoningEffort": "low"
+      },
+      "medium": {
+       "reasoningEffort": "medium"
+      },
+      "high": {
+       "reasoningEffort": "high"
+      }
+     }
+    },
+    "grok-build-0.1": {
+     "id": "grok-build-0.1",
+     "providerID": "xai",
+     "api": {
+      "id": "grok-build-0.1",
+      "url": "",
+      "npm": "@ai-sdk/xai"
+     },
+     "name": "Grok Build 0.1",
+     "family": "grok-build",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": true
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": false
+     },
+     "cost": {
+      "input": 1,
+      "output": 2,
+      "cache": {
+       "read": 0.2,
+       "write": 0
+      },
+      "tiers": [
+       {
+        "input": 2,
+        "output": 4,
+        "cache": {
+         "read": 0.4,
+         "write": 0
+        },
+        "tier": {
+         "type": "context",
+         "size": 200000
+        }
+       }
+      ],
+      "experimentalOver200K": {
+       "input": 2,
+       "output": 4,
+       "cache": {
+        "read": 0.4,
+        "write": 0
+       }
+      }
+     },
+     "limit": {
+      "context": 256000,
+      "output": 256000
+     },
+     "status": "active",
+     "options": {},
+     "headers": {},
+     "release_date": "2026-04-16",
+     "variants": {}
+    }
+   }
+  },
+  {
+   "id": "cloudflare-workers-ai",
+   "name": "Workers AI: Cloudflare AI Gateway",
+   "models": {
+    "@cf/zai-org/glm-5.2": {
+     "id": "@cf/zai-org/glm-5.2",
+     "providerID": "cloudflare-workers-ai",
+     "api": {
+      "id": "workers-ai/@cf/zai-org/glm-5.2",
+      "url": "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      "npm": "@ai-sdk/openai-compatible"
+     },
+     "name": "GLM 5.2",
+     "family": "",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": false,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": {
+       "field": "reasoning_content"
+      }
+     },
+     "cost": {
+      "input": 1.4,
+      "output": 4.4,
+      "cache": {
+       "read": 0.26,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 262144,
+      "output": 32000
+     },
+     "status": "active",
+     "options": {
+      "temperature": 0.7,
+      "top_p": 0.95,
+      "max_tokens": 32000,
+      "store": false,
+      "parallel_tool_calls": true
+     },
+     "headers": {},
+     "release_date": "",
+     "variants": {
+      "high": {
+       "reasoningEffort": "high"
+      },
+      "max": {
+       "reasoningEffort": "max"
+      }
+     }
+    },
+    "@cf/moonshotai/kimi-k2.6": {
+     "id": "@cf/moonshotai/kimi-k2.6",
+     "providerID": "cloudflare-workers-ai",
+     "api": {
+      "id": "workers-ai/@cf/moonshotai/kimi-k2.6",
+      "url": "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/ai/v1",
+      "npm": "@ai-sdk/openai-compatible"
+     },
+     "name": "Kimi K2.6",
+     "family": "",
+     "capabilities": {
+      "temperature": true,
+      "reasoning": true,
+      "attachment": true,
+      "toolcall": true,
+      "input": {
+       "text": true,
+       "audio": false,
+       "image": true,
+       "video": false,
+       "pdf": false
+      },
+      "output": {
+       "text": true,
+       "audio": false,
+       "image": false,
+       "video": false,
+       "pdf": false
+      },
+      "interleaved": {
+       "field": "reasoning_content"
+      }
+     },
+     "cost": {
+      "input": 0.95,
+      "output": 4,
+      "cache": {
+       "read": 0.16,
+       "write": 0
+      }
+     },
+     "limit": {
+      "context": 262144,
+      "output": 32000
+     },
+     "status": "active",
+     "options": {
+      "temperature": 1,
+      "top_p": 0.95,
+      "max_tokens": 32000,
+      "store": false,
+      "parallel_tool_calls": true
+     },
+     "headers": {},
+     "release_date": "",
+     "variants": {}
+    }
+   }
+  }
+ ]
+}
