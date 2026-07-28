@@ -90,6 +90,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "classifier": "google-ai-studio/gemini-3.5-flash-lite",
   "classifierTimeoutMs": 5000,
   "toast": true,
+  "toastDurationMs": 6000,
   "minPromptChars": 12,
   "skipAgents": [],
   "allow": [],
@@ -109,6 +110,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
 | `classifier` | The model that reads your prompt. Must be a gateway model id |
 | `classifierTimeoutMs` | If the classifier is slow, give up and use your normal model |
 | `toast` | Show which model was picked. Keep this on (see Caveats) |
+| `toastDurationMs` | How long the toast stays up |
 | `minPromptChars` | Prompts shorter than this are not routed |
 | `skipAgents` | Agent names that should never be routed, e.g. `["review"]` |
 | `allow` | Only use these models. Empty means all of them |
@@ -163,6 +165,9 @@ Overrides never call the classifier, so they add no delay.
 **The model name in the TUI footer will be wrong.** OpenCode only refreshes it when you switch
 sessions, so it keeps showing your default. The toast is your real signal. Do not turn it off
 unless you do not care which model ran.
+
+The toast appears in the **top right corner** of the TUI and stays for 6 seconds. Raise
+`toastDurationMs` if you keep missing it.
 
 **Routing is per turn, not sticky.** Every prompt is classified again. This is on purpose, so a
 follow-up architecture question is not stuck on a cheap model. Short replies like "yes" are

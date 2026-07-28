@@ -5,6 +5,7 @@ export type RouterConfig = {
   classifier: string
   classifierTimeoutMs: number
   toast: boolean
+  toastDurationMs: number
   minPromptChars: number
   skipAgents: string[]
   allow: string[]
@@ -28,6 +29,7 @@ export const DEFAULTS: RouterConfig = {
   classifier: "google-ai-studio/gemini-3.5-flash-lite",
   classifierTimeoutMs: 5000,
   toast: true,
+  toastDurationMs: 6000,
   minPromptChars: 12,
   skipAgents: [],
   allow: [],

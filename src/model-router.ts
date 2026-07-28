@@ -118,7 +118,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
 
   const notify = (message: string, variant: "info" | "warning" = "info") => {
     if (!cfg.toast) return
-    client.tui.showToast({ body: { message, variant, duration: 2500 } }).catch(() => {})
+    client.tui.showToast({ body: { message, variant, duration: cfg.toastDurationMs } }).catch(() => {})
   }
 
   return {
