@@ -108,6 +108,59 @@ export const ModelRouter: Plugin = async ({ client }) => {
   let catalogAt = 0
   const decisions = new Map<string, Tier>()
 
+  const pendingCommand = new Set<string>()
+  const commandSessions = new Map<string, number>()
+  const parents = new Map<string, string | undefined>()
+  const commandChildren = new Set<string>()
+  let pinnedAgents: Set<string> | undefined
+
+  const COMMAND_TTL = 30_000
+
+  const ranCommand = (sessionID: string) => {
+    const expiry = commandSessions.get(sessionID)
+    return expiry !== undefined && expiry > Date.now()
+  }
+
+  const parentOf = async (sessionID: string) => {
+    if (parents.has(sessionID)) return parents.get(sessionID)
+    let parentID: string | undefined
+    try {
+      const res: any = await client.session.get({ path: { id: sessionID } })
+      parentID = (res?.data ?? res)?.parentID
+    } catch {}
+    if (parents.size > 500) parents.clear()
+    parents.set(sessionID, parentID)
+    return parentID
+  }
+
+  const agentPinsModel = async (agent: string) => {
+    if (!pinnedAgents) {
+      try {
+        const res: any = await client.app.agents()
+        pinnedAgents = new Set(
+          ((res?.data ?? res) as any[]).filter((a) => a?.model).map((a) => a.name),
+        )
+      } catch {
+        pinnedAgents = new Set()
+      }
+    }
+    return pinnedAgents.has(agent)
+  }
+
+  // pendingCommand is consumed by the command's own turn, so later prompts typed into that
+  // same session still get routed. commandSessions only exists to link subtask children.
+  const isCommandDriven = async (sessionID: string) => {
+    if (pendingCommand.delete(sessionID)) return true
+    if (commandChildren.has(sessionID)) return true
+
+    const parentID = await parentOf(sessionID)
+    if (!parentID || !ranCommand(parentID)) return false
+
+    if (commandChildren.size > 500) commandChildren.clear()
+    commandChildren.add(sessionID)
+    return true
+  }
+
   const catalogue = async () => {
     if (catalog.length && Date.now() - catalogAt < 3e5) return catalog
     const res: any = await client.config.providers()
@@ -122,12 +175,21 @@ export const ModelRouter: Plugin = async ({ client }) => {
   }
 
   return {
+    "command.execute.before": async (input) => {
+      if (!cfg.skipCommands || !input.sessionID) return
+      pendingCommand.add(input.sessionID)
+      commandSessions.set(input.sessionID, Date.now() + COMMAND_TTL)
+      for (const [id, expiry] of commandSessions) if (expiry < Date.now()) commandSessions.delete(id)
+    },
+
     // Must be set here, not in chat.params: the assistant turn re-reads its model from the
     // *persisted* user message, and this hook fires immediately before that write.
     "chat.message": async (input, output) => {
       try {
         if (!cfg.enabled || !auth) return
         if (input.agent && cfg.skipAgents.includes(input.agent)) return
+        if (input.agent && (await agentPinsModel(input.agent))) return
+        if (cfg.skipCommands && (await isCommandDriven(input.sessionID))) return
 
         const target = output.message?.model
         if (!target) return

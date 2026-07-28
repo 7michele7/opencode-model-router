@@ -93,6 +93,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "toastDurationMs": 6000,
   "minPromptChars": 12,
   "skipAgents": [],
+  "skipCommands": true,
   "allow": [],
   "deny": ["*robotics*", "*deep-research*"],
 
@@ -113,6 +114,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
 | `toastDurationMs` | How long the toast stays up |
 | `minPromptChars` | Prompts shorter than this are not routed |
 | `skipAgents` | Agent names that should never be routed, e.g. `["review"]` |
+| `skipCommands` | Leave slash commands alone. On by default |
 | `allow` | Only use these models. Empty means all of them |
 | `deny` | Never use these models |
 | `tiers` | Which model you want for each tier, best first |
@@ -141,6 +143,17 @@ and then to a live model inside the allow list.
 | `heavy` | Real reasoning | architecture, migrations, cross-cutting refactors, security review, unknown bugs |
 
 When the classifier is unsure between two tiers, it picks the higher one.
+
+## Slash commands are left alone
+
+If you run a command like `/review-mr`, the router does not touch it. Commands often pin their
+own `model:` or `agent:` on purpose, and overriding that would break them.
+
+This covers commands that run in a child session too (`subtask: true`), and any agent that pins
+its own model. A prompt you type yourself *after* a command in the same session is still routed
+normally.
+
+Set `"skipCommands": false` if you want commands routed as well.
 
 ## Overrides
 

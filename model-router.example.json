@@ -6,6 +6,7 @@
   "toastDurationMs": 6000,
   "minPromptChars": 12,
   "skipAgents": [],
+  "skipCommands": true,
   "allow": [],
   "deny": [
     "*robotics*",

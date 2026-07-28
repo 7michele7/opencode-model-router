@@ -8,6 +8,7 @@ export type RouterConfig = {
   toastDurationMs: number
   minPromptChars: number
   skipAgents: string[]
+  skipCommands: boolean
   allow: string[]
   deny: string[]
   tiers: Record<Tier, string[]>
@@ -32,6 +33,7 @@ export const DEFAULTS: RouterConfig = {
   toastDurationMs: 6000,
   minPromptChars: 12,
   skipAgents: [],
+  skipCommands: true,
   allow: [],
   // Taste, not data: these are text+tool-capable but not coding models.
   deny: ["*robotics*", "*deep-research*"],
