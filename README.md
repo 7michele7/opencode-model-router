@@ -8,7 +8,7 @@ on a model that fits. Renames go to a cheap model. Architecture goes to Opus. Yo
 ```
 you type a prompt
         │
-        ├── starts with "!" or is just "yes"/"ok"? ──▶ skip, no cost, no delay
+        ├── an override, or just "yes"/"ok"? ──────▶ skip, no cost, no delay
         │
         ▼
   classifier  (gemini-3.5-flash-lite, ~730ms)
@@ -37,7 +37,7 @@ This plugin makes the choice for you, and stays out of the way when you want con
 |---|---|
 | Added latency | ~730ms per prompt (median), ~830ms worst case |
 | Added cost | about $0.00002 per prompt |
-| When it skips | `!` overrides, short prompts, "yes"/"ok"/"continue", repeated prompts |
+| When it skips | `>>` overrides, short prompts, "yes"/"ok"/"continue", repeated prompts |
 
 The classifier was measured at **13/14 correct** on a set of real coding prompts.
 
@@ -97,7 +97,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "minPromptChars": 12,
   "skipAgents": [],
   "skipCommands": true,
-  "prefixes": [">>", "!"],
+  "prefixes": [">>"],
   "allow": [],
   "deny": ["*robotics*", "*deep-research*"],
 
@@ -135,7 +135,7 @@ automatically. If you want a smaller set, use `allow`:
 "allow": ["anthropic/*", "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6"]
 ```
 
-This applies to everything: tier preferences, the automatic fallback, and `!` overrides. If a
+This applies to everything: tier preferences, the automatic fallback, and `>>` overrides. If a
 tier preference is not in the allow list, the router falls through to the next one you listed,
 and then to a live model inside the allow list.
 
@@ -299,9 +299,8 @@ The toast appears in the **top right corner** of the TUI and stays for 6 seconds
 follow-up architecture question is never stuck on a cheap model. What changed is the other
 direction: the tier can no longer *drop* on its own. See [Sticky tiers](#sticky-tiers).
 
-**`!` as a prefix does not work in the TUI.** `!` is the OpenCode shell-mode keybinding, so it is
-swallowed before any plugin sees it. It stays in the default `prefixes` because it does work for
-HTTP and SDK clients. In the TUI, use `>>`.
+**Do not add `!` or `@` or `/` to `prefixes`.** The TUI binds them to shell mode and autocomplete,
+so they never reach a plugin.
 
 **Subagents are routed too.** Add their names to `skipAgents` if you do not want that.
 

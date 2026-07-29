@@ -11,8 +11,7 @@
   "skipAgents": [],
   "skipCommands": true,
   "prefixes": [
-    ">>",
-    "!"
+    ">>"
   ],
   "allow": [],
   "deny": [

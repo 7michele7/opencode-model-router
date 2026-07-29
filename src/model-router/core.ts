@@ -52,8 +52,7 @@ export const DEFAULTS: RouterConfig = {
   minPromptChars: 12,
   skipAgents: [],
   skipCommands: true,
-  // "!" never arrives from the TUI (it is the shell-mode keybinding) but does work over HTTP.
-  prefixes: [">>", "!"],
+  prefixes: [">>"],
   allow: [],
   // Taste, not data: these are text+tool-capable but not coding models.
   deny: ["*robotics*", "*deep-research*"],
@@ -216,8 +215,7 @@ export const parseTier = (raw: string): { tier: Tier; why: string } | undefined 
   }
 }
 
-// "!" is bound to shell mode by the TUI when typed as the first character, so it never reaches
-// this plugin from the TUI. It stays supported for HTTP clients. "@" and "/" open autocomplete.
+// "@" and "/" are not usable as prefixes, the TUI binds them to autocomplete.
 export const parseOverride = (prompt: string, prefixes: string[]): string | undefined => {
   for (const prefix of [...prefixes].sort((a, b) => b.length - a.length)) {
     if (!prefix || !prompt.startsWith(prefix)) continue

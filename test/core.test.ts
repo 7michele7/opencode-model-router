@@ -94,7 +94,6 @@ const P = DEFAULTS.prefixes
 check("\">>heavy\" -> heavy", parseOverride(">>heavy do the thing", P) === "heavy", parseOverride(">>heavy x", P))
 check("\">>off\" -> off", parseOverride(">>off x", P) === "off")
 check("\">>opus\" -> opus", parseOverride(">>opus x", P) === "opus")
-check("\"!heavy\" still works for HTTP clients", parseOverride("!heavy x", P) === "heavy")
 check("uppercase is lowercased", parseOverride(">>HEAVY x", P) === "heavy")
 check("prefix with no args", parseOverride(">>heavy", P) === "heavy")
 check("longer prefix wins", parseOverride(">>heavy x", [">", ">>"]) === "heavy")
