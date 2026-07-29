@@ -14,6 +14,7 @@ export type RouterConfig = {
   deny: string[]
   autoDiscovery?: boolean
   maxModelsPerTier?: number
+  onClassifierFailure?: "default" | Tier
   tiers: Record<Tier, string[]>
 }
 
@@ -43,9 +44,17 @@ export const pinRoute = (pin: string): SessionRoute => ({ pin })
 export const resolvePin = (route: SessionRoute | undefined, catalog: CatalogEntry[]) =>
   route?.pin ? catalog.find((m) => m.id === route.pin) : undefined
 
+// What to do when every classifier in the chain fails. "default" leaves the model alone so the
+// turn runs on whatever the user picked, which is the only option that cannot be worse than not
+// installing the router. Anything unrecognised normalises to "default" rather than guessing.
+export const failureAction = (cfg: RouterConfig): "default" | Tier =>
+  TIERS.includes(cfg.onClassifierFailure as Tier) ? (cfg.onClassifierFailure as Tier) : "default"
+
 export const DEFAULTS: RouterConfig = {
   enabled: true,
-  classifier: ["google-ai-studio/gemini-3.5-flash-lite", "google-ai-studio/gemini-2.5-flash-lite"],
+  // The fallback is a different provider on purpose. A same-provider fallback fails at the same
+  // time as the primary, and gemini-2.5-flash-lite measured a 8.1s tail against a 5s timeout.
+  classifier: ["google-ai-studio/gemini-3.5-flash-lite", "anthropic/claude-haiku-4-5"],
   classifierTimeoutMs: 5000,
   toast: true,
   toastDurationMs: 6000,
@@ -58,6 +67,7 @@ export const DEFAULTS: RouterConfig = {
   deny: ["*robotics*", "*deep-research*"],
   autoDiscovery: false,
   maxModelsPerTier: 3,
+  onClassifierFailure: "default",
   tiers: {
     light: ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"],
     standard: ["anthropic/claude-sonnet-4-6", "anthropic/claude-sonnet-5"],

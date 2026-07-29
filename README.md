@@ -82,7 +82,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "enabled": true,
   "classifier": [
     "google-ai-studio/gemini-3.5-flash-lite",
-    "google-ai-studio/gemini-2.5-flash-lite"
+    "anthropic/claude-haiku-4-5"
   ],
   "classifierTimeoutMs": 5000,
   "toast": true,
@@ -91,6 +91,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "skipAgents": [],
   "skipCommands": true,
   "prefixes": [">>"],
+  "onClassifierFailure": "default",
   "allow": [],
   "deny": ["*robotics*", "*deep-research*"],
 
@@ -106,7 +107,8 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
 |---|---|
 | `enabled` | Set to `false` to turn routing off without uninstalling |
 | `classifier` | The model that reads your prompt. Must be a gateway model id |
-| `classifierTimeoutMs` | If the classifier is slow, give up and use your normal model |
+| `classifierTimeoutMs` | Per model in the chain, so a 2-model chain can wait twice this long |
+| `onClassifierFailure` | What to do when the whole chain fails. `"default"` (leave your model alone) or a tier |
 | `toast` | Show which model was picked. Keep this on (see Caveats) |
 | `toastDurationMs` | How long the toast stays up |
 | `minPromptChars` | Prompts shorter than this are not routed |
@@ -205,10 +207,46 @@ decrease on its own.
 Prompts too short to classify keep the floor too, so `"yes"` does not fall back to your default
 model. Floors are per session.
 
-## Classifier fallback
+## When the classifier fails
 
-If `classifier` is an array, the router tries each model in order until one returns a valid tier.
-If none succeed, it falls back to the **standard** tier and shows a warning toast.
+If `classifier` is an array the router tries each model in order. `classifierTimeoutMs` applies to
+**each** one, so a two-model chain can spend twice that long before giving up.
+
+Pick the fallback from a **different provider**. A same-provider fallback tends to fail at the same
+moment as the primary, which is the only moment it exists for. Measured on the gateway:
+
+| Model | Accuracy | p50 | p90 | max |
+|---|---|---|---|---|
+| `gemini-3.5-flash-lite` (primary) | 17/18 | 799ms | 848ms | 853ms |
+| `claude-haiku-4-5` (fallback) | 16/18 | 889ms | 1149ms | 1552ms |
+| `gemini-2.5-flash-lite` (old fallback) | 16/18 | 713ms | 2958ms | **8070ms** |
+| `gpt-4o-mini` | 17/18 | 1558ms | 3825ms | **19077ms** |
+
+The old fallback lost a coin flip against its own 5s timeout, so it often never answered.
+
+When the whole chain fails the router **does not guess a tier**. It leaves `output.message.model`
+alone and the turn runs on the model you selected:
+
+```
+                            ┌─ session has a >>tier floor?  ── hold that floor
+whole classifier chain fails ┤
+                            └─ otherwise                    ── your own model, untouched
+```
+
+This is the only behaviour that cannot be worse than not installing the router at all. Guessing
+`standard` quietly downgrades anyone whose default is stronger than that — an Opus user would spend
+an outage on Sonnet and only find out from a toast.
+
+The failure toast is an **error** variant, it is forced through even with `toast: false`, and it
+carries the reason from every model in the chain:
+
+```
+classifier down · using your own model · gemini-3.5-flash-lite: HTTP 401 · claude-haiku-4-5: HTTP 401
+```
+
+Set `"onClassifierFailure": "standard"` (or any tier) if you would rather have a guess than your own
+default. A failed classification is never cached and never becomes a session floor, so one bad
+minute does not follow you around for the rest of the session.
 
 Single-string `classifier` still works for backward compatibility.
 
@@ -247,13 +285,16 @@ so they never reach a plugin.
 
 **Subagents are routed too.** Add their names to `skipAgents` if you do not want that.
 
+**A classifier outage is loud on purpose.** The error toast ignores `toast: false`, because the one
+thing you need to know is when the router has stopped routing.
+
 ## Tests
 
 ```bash
 node --experimental-strip-types --no-warnings test/core.test.ts
 ```
 
-81 tests, no network needed. They run against a real captured provider payload in
+92 tests, no network needed. They run against a real captured provider payload in
 `test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
 
 The classifier taxonomy has regression tests asserting the light tier is not defined by grammar.

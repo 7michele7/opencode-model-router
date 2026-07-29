@@ -6,6 +6,7 @@ import {
   buildCatalog,
   clampTier,
   CLASSIFIER_SYSTEM,
+  failureAction,
   DEFAULTS,
   parseOverride,
   parseTier,
@@ -80,11 +81,21 @@ const compatEndpoint = async (host: string, token: string) => {
   return compat
 }
 
-const classify = async (prompt: string, cfg: RouterConfig, endpoint: string, token: string) => {
+type ClassifyOutcome =
+  | { tier: Tier; why: string; errors?: undefined }
+  | { tier?: undefined; why?: undefined; errors: string[] }
+
+const classify = async (
+  prompt: string,
+  cfg: RouterConfig,
+  endpoint: string,
+  token: string,
+): Promise<ClassifyOutcome> => {
   const models = Array.isArray(cfg.classifier) ? cfg.classifier : [cfg.classifier]
   const errors: string[] = []
 
   for (const model of models) {
+    const label = model.split("/").pop()
     try {
       const res = await fetch(`${endpoint}/chat/completions`, {
         method: "POST",
@@ -106,19 +117,19 @@ const classify = async (prompt: string, cfg: RouterConfig, endpoint: string, tok
         }),
       })
       if (!res.ok) {
-        errors.push(`${model}: HTTP ${res.status}`)
+        errors.push(`${label}: HTTP ${res.status}`)
         continue
       }
       const body: any = await res.json()
       const parsed = parseTier(body?.choices?.[0]?.message?.content ?? "")
       if (parsed) return parsed
-      errors.push(`${model}: invalid response`)
+      errors.push(`${label}: bad reply`)
     } catch (err: any) {
-      errors.push(`${model}: ${err?.name ?? "error"}`)
+      errors.push(`${label}: ${err?.name ?? "error"}`)
     }
   }
 
-  return { tier: undefined as undefined, errors }
+  return { errors }
 }
 
 export const ModelRouter: Plugin = async ({ client }) => {
@@ -196,9 +207,12 @@ export const ModelRouter: Plugin = async ({ client }) => {
     return catalog
   }
 
-  const notify = (message: string, variant: "info" | "warning" = "info") => {
-    if (!cfg.toast) return
-    client.tui.showToast({ body: { message, variant, duration: cfg.toastDurationMs } }).catch(() => {})
+  // Errors are forced through even with toast: false. Silently doing nothing is the one case the
+  // user has to know about, since it means the router is not routing.
+  const notify = (message: string, variant: "info" | "warning" | "error" = "info") => {
+    if (!cfg.toast && variant !== "error") return
+    const duration = variant === "error" ? Math.max(cfg.toastDurationMs, 10000) : cfg.toastDurationMs
+    client.tui.showToast({ body: { message, variant, duration } }).catch(() => {})
   }
 
   return {
@@ -284,20 +298,37 @@ export const ModelRouter: Plugin = async ({ client }) => {
         const cacheKey = `${input.sessionID}:${prompt}`
         const cached = decisions.get(cacheKey)
         let decision = cached ? { tier: cached, why: "cached" } : undefined
-        let fallback = false
 
         if (!decision) {
           const result = await classify(prompt, cfg, endpoint, auth.token)
-          if (result && "tier" in result && result.tier) {
-            decision = result
-          } else {
-            fallback = true
-            decision = { tier: "standard" as Tier, why: "classifier failed" }
-            notify(`classifier failed · falling back to standard`, "warning")
-          }
-        }
 
-        if (!decision) return
+          // Every classifier in the chain failed. Do not invent a tier: it would be written to the
+          // decision cache and to the session floor, so one transient failure would outlive the
+          // outage that caused it.
+          if (!result.tier) {
+            const why = result.errors?.length ? result.errors.join(" · ") : "unknown"
+
+            if (route?.floor) {
+              const held = resolveTier(route.floor, models, cfg)
+              if (held) apply(held, `${route.floor} (held)`)
+              notify(`classifier down · holding ${route.floor} · ${why}`, "error")
+              return
+            }
+
+            const onFailure = failureAction(cfg)
+            if (onFailure === "default") {
+              notify(`classifier down · using your own model · ${why}`, "error")
+              return
+            }
+
+            const chosen = resolveTier(onFailure, models, cfg)
+            if (chosen) apply(chosen, `${onFailure} (classifier down)`)
+            notify(`classifier down · forced ${onFailure} · ${why}`, "error")
+            return
+          }
+
+          decision = { tier: result.tier, why: result.why }
+        }
 
         if (decisions.size > 200) decisions.clear()
         decisions.set(cacheKey, decision.tier)
@@ -309,9 +340,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
         if (!entry) return
         apply(
           entry,
-          tier === decision.tier
-            ? `${tier} · ${decision.why}${fallback ? " (fallback)" : ""}`
-            : `${tier} · held (classified ${decision.tier})`,
+          tier === decision.tier ? `${tier} · ${decision.why}` : `${tier} · held (classified ${decision.tier})`,
         )
       } catch {}
     },

@@ -11,6 +11,7 @@ import {
   parseOverride,
   clampTier,
   tierRank,
+  failureAction,
   CLASSIFIER_SYSTEM,
   pinRoute,
   tierRoute,
@@ -214,6 +215,31 @@ check("rewriting a file is not light", /never light/i.test(CLASSIFIER_SYSTEM))
 check("ties round up", /HIGHER one/i.test(CLASSIFIER_SYSTEM))
 check("still asks for strict json", /Reply ONLY/.test(CLASSIFIER_SYSTEM))
 check("names all three tiers", TIERS.every((t) => CLASSIFIER_SYSTEM.includes(t)))
+
+console.log("\n— classifier failure —")
+check("defaults to leaving the user's model alone", failureAction(cfg()) === "default")
+check("default config is explicit about it", DEFAULTS.onClassifierFailure === "default")
+check("an opt-in tier is honoured", failureAction(cfg({ onClassifierFailure: "heavy" })) === "heavy")
+check("standard is still available for anyone who wants it", failureAction(cfg({ onClassifierFailure: "standard" })) === "standard")
+check("garbage normalises to default, not to a guess", failureAction(cfg({ onClassifierFailure: "enormous" as any })) === "default")
+check("missing value normalises to default", failureAction(cfg({ onClassifierFailure: undefined })) === "default")
+
+// Regression: a failure used to fabricate tier "standard", which was then written to the session
+// floor. Because the floor only ratchets up, one transient 401 pinned the session to >= standard
+// for every later turn, long after the classifier recovered.
+const poisoned = clampTier("light", "standard")
+check("a fabricated standard floor would outlive the outage", poisoned === "standard")
+check("so a failure must not produce a tier at all", failureAction(cfg()) === "default")
+
+console.log("\n— classifier chain —")
+const chain = DEFAULTS.classifier as string[]
+check("has a fallback", chain.length >= 2)
+check(
+  "fallback is a different provider than the primary",
+  chain[0].split("/")[0] !== chain[1].split("/")[0],
+  `${chain[0]} then ${chain[1]}`,
+)
+check("does not use gemini-2.5-flash-lite, measured 8.1s against a 5s timeout", !chain.includes("google-ai-studio/gemini-2.5-flash-lite"))
 
 console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
 process.exit(failed ? 1 : 0)

@@ -2,7 +2,7 @@
   "enabled": true,
   "classifier": [
     "google-ai-studio/gemini-3.5-flash-lite",
-    "google-ai-studio/gemini-2.5-flash-lite"
+    "anthropic/claude-haiku-4-5"
   ],
   "classifierTimeoutMs": 5000,
   "toast": true,
@@ -20,6 +20,7 @@
   ],
   "autoDiscovery": false,
   "maxModelsPerTier": 3,
+  "onClassifierFailure": "default",
   "tiers": {
     "light": [
       "openai/gpt-4o-mini",
