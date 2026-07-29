@@ -76,29 +76,44 @@ const compatEndpoint = async (host: string, token: string) => {
 }
 
 const classify = async (prompt: string, cfg: RouterConfig, endpoint: string, token: string) => {
-  const res = await fetch(`${endpoint}/chat/completions`, {
-    method: "POST",
-    signal: AbortSignal.timeout(cfg.classifierTimeoutMs),
-    headers: {
-      "cf-access-token": token,
-      "X-Requested-With": "xmlhttprequest",
-      "content-type": "application/json",
-      "User-Agent": "opencode-model-router",
-    },
-    body: JSON.stringify({
-      model: cfg.classifier,
-      max_tokens: 60,
-      temperature: 0,
-      messages: [
-        { role: "system", content: CLASSIFIER_SYSTEM },
-        { role: "user", content: prompt.slice(0, 4000) },
-      ],
-    }),
-  })
-  if (!res.ok) return undefined
+  const models = Array.isArray(cfg.classifier) ? cfg.classifier : [cfg.classifier]
+  const errors: string[] = []
 
-  const body: any = await res.json()
-  return parseTier(body?.choices?.[0]?.message?.content ?? "")
+  for (const model of models) {
+    try {
+      const res = await fetch(`${endpoint}/chat/completions`, {
+        method: "POST",
+        signal: AbortSignal.timeout(cfg.classifierTimeoutMs),
+        headers: {
+          "cf-access-token": token,
+          "X-Requested-With": "xmlhttprequest",
+          "content-type": "application/json",
+          "User-Agent": "opencode-model-router",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 60,
+          temperature: 0,
+          messages: [
+            { role: "system", content: CLASSIFIER_SYSTEM },
+            { role: "user", content: prompt.slice(0, 4000) },
+          ],
+        }),
+      })
+      if (!res.ok) {
+        errors.push(`${model}: HTTP ${res.status}`)
+        continue
+      }
+      const body: any = await res.json()
+      const parsed = parseTier(body?.choices?.[0]?.message?.content ?? "")
+      if (parsed) return parsed
+      errors.push(`${model}: invalid response`)
+    } catch (err: any) {
+      errors.push(`${model}: ${err?.name ?? "error"}`)
+    }
+  }
+
+  return { tier: undefined as undefined, errors }
 }
 
 export const ModelRouter: Plugin = async ({ client }) => {
@@ -231,14 +246,27 @@ export const ModelRouter: Plugin = async ({ client }) => {
         if (!endpoint) return
 
         const cached = decisions.get(prompt)
-        const decision = cached ? { tier: cached, why: "cached" } : await classify(prompt, cfg, endpoint, auth.token)
+        let decision = cached ? { tier: cached, why: "cached" } : undefined
+        let fallback = false
+
+        if (!decision) {
+          const result = await classify(prompt, cfg, endpoint, auth.token)
+          if (result && "tier" in result && result.tier) {
+            decision = result
+          } else {
+            fallback = true
+            decision = { tier: "standard" as Tier, why: "classifier failed" }
+            notify(`classifier failed · falling back to standard`, "warning")
+          }
+        }
+
         if (!decision) return
 
         if (decisions.size > 200) decisions.clear()
         decisions.set(prompt, decision.tier)
 
         const entry = resolveTier(decision.tier, models, cfg)
-        if (entry) apply(entry, `${decision.tier} · ${decision.why}`)
+        if (entry) apply(entry, `${decision.tier} · ${decision.why}${fallback ? " (fallback)" : ""}`)
       } catch {}
     },
   }

@@ -87,7 +87,10 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
 ```jsonc
 {
   "enabled": true,
-  "classifier": "google-ai-studio/gemini-3.5-flash-lite",
+  "classifier": [
+    "google-ai-studio/gemini-3.5-flash-lite",
+    "google-ai-studio/gemini-2.5-flash-lite"
+  ],
   "classifierTimeoutMs": 5000,
   "toast": true,
   "toastDurationMs": 6000,
@@ -174,6 +177,13 @@ Put these at the start of your prompt.
 ```
 
 Overrides never call the classifier, so they add no delay.
+
+## Classifier fallback
+
+If `classifier` is an array, the router tries each model in order until one returns a valid tier.
+If none succeed, it falls back to the **standard** tier and shows a warning toast.
+
+Single-string `classifier` still works for backward compatibility.
 
 ## Caveats
 

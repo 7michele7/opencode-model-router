@@ -2,7 +2,7 @@ export type Tier = "light" | "standard" | "heavy"
 
 export type RouterConfig = {
   enabled: boolean
-  classifier: string
+  classifier: string | string[]
   classifierTimeoutMs: number
   toast: boolean
   toastDurationMs: number
@@ -28,7 +28,7 @@ export const TIERS: Tier[] = ["light", "standard", "heavy"]
 
 export const DEFAULTS: RouterConfig = {
   enabled: true,
-  classifier: "google-ai-studio/gemini-3.5-flash-lite",
+  classifier: ["google-ai-studio/gemini-3.5-flash-lite", "google-ai-studio/gemini-2.5-flash-lite"],
   classifierTimeoutMs: 5000,
   toast: true,
   toastDurationMs: 6000,
