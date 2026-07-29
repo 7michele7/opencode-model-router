@@ -24,13 +24,6 @@ you type a prompt
   the turn runs on that model  +  a toast tells you which one
 ```
 
-## Why
-
-Most teams have a lot of models available now. Picking one by hand every time is annoying, and
-people forget, so they either burn a big model on a rename or use a small model on a migration.
-
-This plugin makes the choice for you, and stays out of the way when you want control.
-
 ## What it costs
 
 | | |
@@ -39,7 +32,7 @@ This plugin makes the choice for you, and stays out of the way when you want con
 | Added cost | about $0.00002 per prompt |
 | When it skips | `>>` overrides, short prompts, "yes"/"ok"/"continue", repeated prompts |
 
-The classifier was measured at **13/14 correct** on a set of real coding prompts.
+Measured at **17/18** on a set of real coding prompts.
 
 ## Requirements
 
@@ -67,7 +60,7 @@ cd ~/.config/opencode && npm install @opencode-ai/plugin
 **Restart OpenCode.** Running sessions will not pick up a new plugin.
 
 To check it worked, ask for something small like `fix the typo in the README title`. You should
-see a toast such as `→ @cf/moonshotai/kimi-k2.6 · light · simple typo fix`.
+see a toast such as `→ gpt-4o-mini · light · simple typo fix`.
 
 ### Developing on it
 
@@ -102,7 +95,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "deny": ["*robotics*", "*deep-research*"],
 
   "tiers": {
-    "light":    ["cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6", "anthropic/claude-haiku-4-5"],
+    "light":    ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"],
     "standard": ["anthropic/claude-sonnet-4-6", "anthropic/claude-sonnet-5"],
     "heavy":    ["anthropic/claude-opus-5", "anthropic/claude-opus-4-6"]
   }
@@ -132,7 +125,7 @@ By default the router can use every model OpenCode can reach, and new models are
 automatically. If you want a smaller set, use `allow`:
 
 ```jsonc
-"allow": ["anthropic/*", "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6"]
+"allow": ["anthropic/*", "openai/gpt-4o-mini"]
 ```
 
 This applies to everything: tier preferences, the automatic fallback, and `>>` overrides. If a
@@ -141,13 +134,16 @@ and then to a live model inside the allow list.
 
 ### The tiers
 
+Tiers describe **how much work a request needs**, not how it is worded.
+
 | Tier | For | Examples |
 |---|---|---|
-| `light` | Mechanical edits and plain questions | rename, typo, version bump, "what does this regex do" |
-| `standard` | Normal feature work in one area | add a component, write a test, fix a described bug |
+| `light` | Self-contained. Needs no file, repo or history | rename, typo, version bump, "what does useMemo do" |
+| `standard` | One area of feature work, or anything that must read the project first | add a component, write a test, "what did we do so far", "update the README" |
 | `heavy` | Real reasoning | architecture, migrations, cross-cutting refactors, security review, unknown bugs |
 
-When the classifier is unsure between two tiers, it picks the higher one.
+A short prompt is not automatically light, rewriting an existing file is never light, and ties
+round up. Judging on grammar instead of work required was worth 6 misclassifications out of 18.
 
 ## Slash commands are left alone
 
@@ -186,49 +182,13 @@ tier floor      >>heavy / >>standard / >>light  classifier may go up, never down
 model pin       >>opus / >>haiku / ...          one exact model, classifier not called
 ```
 
-Because a model pin skips classification entirely, it also removes the ~700ms the classifier
-costs. Pinning is the fastest mode.
-
-If a pinned model disappears from the catalog, the pin is dropped and the session goes back to
-automatic routing rather than failing.
-
-## What "light" means
-
-The tier names describe **how much work the request needs**, not how the request is worded. This
-distinction is the whole game and it is easy to get wrong.
-
-An early version of the classifier prompt described the light tier as *"mechanical, single obvious
-edit, or a plain question"*. That last clause is the trap. These two are grammatically identical:
-
-```
-"what does useMemo do"        answerable from general knowledge   -> light
-"what did we do so far?"      needs the repo and the whole convo  -> not light
-```
-
-The classifier obediently sent both to the smallest model, along with *"update the README"* — which
-a small model then rewrote from scratch, deleting 254 lines it had never read.
-
-So the rule is now about **context required** and **blast radius**, not grammar:
-
-- A question is only light if it can be answered without reading any file, the repo, or the
-  earlier conversation.
-- Rewriting or deleting an existing file is never light.
-- A short prompt is not automatically light.
-- Ties round up.
-
-On an 18-prompt eval set this moved accuracy from **11/18 to 17/18**. The one remaining miss is
-`"format this file with prettier"`, which comes back `standard` because it rewrites a file. That is
-left alone on purpose — the costs are not symmetric:
-
-```
-too cautious on "format this file"   a fraction of a cent
-too eager on "update the README"     254 deleted lines
-```
+A model pin skips classification, so it also removes the ~700ms it costs. If a pinned model
+disappears from the catalog the pin is dropped and the session goes back to automatic routing.
 
 ## Sticky tiers
 
-A tier override is a **floor**, not a one-off. Once you say `>>heavy`, the classifier can move the
-session up but never back down.
+A tier override is a **floor**, not a one-off: `tier = max(classified_tier, session_floor)`. The
+classifier can move a session up but never back down.
 
 ```
 >>heavy how should I structure this?     opus-5      floor := heavy
@@ -237,29 +197,13 @@ session up but never back down.
 >>off                                    (cleared)   free routing again
 ```
 
-Why this exists: complexity is not a property of your prompt, it is inherited from the
-conversation. When a big model asks you a question, your reply is short — *"yes, option 2"* — and
-a per-message classifier reads that as trivial and drops you to the light tier. You then get a
-small model answering a question only the big model had the context to ask.
+This exists because complexity is inherited from the conversation, not carried by your prompt. When
+a big model asks you a question your reply is short — *"yes, option 2"* — and a per-message
+classifier reads that as trivial. Rather than trying to detect replies, the tier simply cannot
+decrease on its own.
 
-The fix is structural rather than lexical. There is no attempt to detect "is this a reply to a
-question" — instead the tier is simply not allowed to decrease on its own:
-
-```
-tier = max(classified_tier, session_floor)
-```
-
-The classifier can still escalate freely, and the new tier becomes the new floor. So a session
-ratchets upward and holds. To go back down you have to say so explicitly with `>>light` or `>>off`.
-
-Short prompts that never reach the classifier at all (below `minPromptChars`) also keep the floor,
-so answering `"yes"` in a pinned session does not silently fall back to your default model.
-
-Floors are per session. Two windows do not affect each other.
-
-Note that tier floors and the classifier taxonomy solve two halves of the same problem. The
-taxonomy stops a *fresh* conversational prompt going to the wrong tier; the floor stops a
-*follow-up* being judged on its own without the context that produced it.
+Prompts too short to classify keep the floor too, so `"yes"` does not fall back to your default
+model. Floors are per session.
 
 ## Classifier fallback
 
@@ -292,12 +236,11 @@ Your `allow` and `deny` filters still apply, so you can exclude providers you do
 sessions, so it keeps showing your default. The toast is your real signal. Do not turn it off
 unless you do not care which model ran.
 
-The toast appears in the **top right corner** of the TUI and stays for 6 seconds. Raise
-`toastDurationMs` if you keep missing it.
+It appears **top right** and stays 6 seconds. Raise `toastDurationMs` if you keep missing it.
 
-**Routing is per turn, but it cannot go backwards.** Every prompt is classified again, so a
-follow-up architecture question is never stuck on a cheap model. What changed is the other
-direction: the tier can no longer *drop* on its own. See [Sticky tiers](#sticky-tiers).
+**Routing is per turn, but cannot go backwards.** Every prompt is classified again, so a follow-up
+architecture question is never stuck on a cheap model. It just cannot *drop* on its own. See
+[Sticky tiers](#sticky-tiers).
 
 **Do not add `!` or `@` or `/` to `prefixes`.** The TUI binds them to shell mode and autocomplete,
 so they never reach a plugin.
@@ -310,15 +253,12 @@ so they never reach a plugin.
 node --experimental-strip-types --no-warnings test/core.test.ts
 ```
 
-82 tests, no network needed. They run against a real captured provider payload in
+81 tests, no network needed. They run against a real captured provider payload in
 `test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
 
-The classifier taxonomy has its own regression tests. They assert the light tier is not defined by
-grammar, because that single clause was worth 6 misclassifications out of 18.
+The classifier taxonomy has regression tests asserting the light tier is not defined by grammar.
 
 ## How it works
-
-The interesting part is which hook to use.
 
 `chat.params` looks like the hook for changing the model, but it is not. By the time it runs,
 the provider SDK is already chosen, and its output has no model field.
