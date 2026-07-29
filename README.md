@@ -175,26 +175,6 @@ Put these at the start of your prompt.
 
 Overrides never call the classifier, so they add no delay.
 
-### Why `>>` and not `!`
-
-Do not use `!` in the TUI. OpenCode binds `!` as the first character to **shell mode**, so the
-prompt never reaches this plugin:
-
-```js
-// packages/tui/src/component/prompt/index.tsx
-enabled: store.mode === "normal" && input?.visualCursor.offset === 0
-bindings: [{ key: "!", desc: "Shell mode", ... }]
-```
-
-`@` and `/` are taken too (file autocomplete and slash commands). `>>` is free.
-
-`!` still works for HTTP API clients, so it stays in the default `prefixes` list. Change
-`prefixes` if you want something else:
-
-```jsonc
-"prefixes": ["++"]
-```
-
 ## Caveats
 
 **The model name in the TUI footer will be wrong.** OpenCode only refreshes it when you switch
