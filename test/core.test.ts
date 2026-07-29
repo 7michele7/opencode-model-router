@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import {
+  autoTiers,
   buildCatalog,
   frontierOf,
   resolveTier,
@@ -45,7 +46,7 @@ const standard = resolveTier("standard", catalog, cfg())
 const light = resolveTier("light", catalog, cfg())
 check("heavy -> claude-opus-5", heavy?.id === "anthropic/claude-opus-5", heavy?.id)
 check("standard -> claude-sonnet-4-6", standard?.id === "anthropic/claude-sonnet-4-6", standard?.id)
-check("light -> kimi-k2.6", light?.id === "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6", light?.id)
+check("light -> gpt-4o-mini or haiku", light?.id === "openai/gpt-4o-mini" || light?.id === "anthropic/claude-haiku-4-5", light?.id)
 
 console.log("\n— self-healing when a preferred model disappears —")
 const orphaned = cfg({ tiers: { ...DEFAULTS.tiers, heavy: ["anthropic/claude-opus-does-not-exist"] } })
@@ -101,6 +102,27 @@ check("parses json with prose around it", parseTier('Sure! {"tier":"standard","w
 check("rejects unknown tier", parseTier('{"tier":"nuclear"}') === undefined)
 check("rejects non-json", parseTier("I think this is heavy") === undefined)
 check("rejects malformed json", parseTier('{"tier":') === undefined)
+
+console.log("\n— auto-discovery —")
+const auto = autoTiers(catalog)
+check("auto-discovery returns all three tiers", Object.keys(auto).length === 3)
+check("auto-discovery light is cheapest", auto.light.every((id) => {
+  const e = catalog.find((m) => m.id === id)
+  return e && e.outputCost < 1
+}))
+check("auto-discovery standard is mid-cost", auto.standard.every((id) => {
+  const e = catalog.find((m) => m.id === id)
+  return e && e.outputCost >= 1 && e.outputCost < 6
+}))
+check("auto-discovery heavy is priciest", auto.heavy.every((id) => {
+  const e = catalog.find((m) => m.id === id)
+  return e && e.outputCost >= 6
+}))
+check("auto-discovery respects maxPerTier", auto.light.length <= 3 && auto.standard.length <= 3 && auto.heavy.length <= 3)
+
+const autoCfg = cfg({ autoDiscovery: true })
+const autoHeavy = resolveTier("heavy", catalog, autoCfg)
+check("resolveTier honours auto-discovery", auto.heavy.includes(autoHeavy?.id ?? ""), autoHeavy?.id)
 
 console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
 process.exit(failed ? 1 : 0)

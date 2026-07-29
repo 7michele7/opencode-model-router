@@ -185,6 +185,24 @@ If none succeed, it falls back to the **standard** tier and shows a warning toas
 
 Single-string `classifier` still works for backward compatibility.
 
+## Auto-discovery
+
+Set `autoDiscovery: true` and the router will ignore your `tiers` list and pick models from the live
+catalog automatically.
+
+```jsonc
+{
+  "autoDiscovery": true,
+  "maxModelsPerTier": 3
+}
+```
+
+It groups models by cost band — cheapest go to `light`, middle to `standard`, priciest to `heavy` —
+and keeps the newest model from each provider in each band. Up to `maxModelsPerTier` per tier.
+
+This is **opt-in** and off by default. Turn it on when you do not want to maintain a model list.
+Your `allow` and `deny` filters still apply, so you can exclude providers you do not want.
+
 ## Caveats
 
 **The model name in the TUI footer will be wrong.** OpenCode only refreshes it when you switch
@@ -206,7 +224,7 @@ skipped so they stay on whatever ran last.
 node --experimental-strip-types --no-warnings test/core.test.ts
 ```
 
-43 tests, no network needed. They run against a real captured provider payload in
+49 tests, no network needed. They run against a real captured provider payload in
 `test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
 
 ## How it works

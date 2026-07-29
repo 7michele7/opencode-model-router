@@ -19,6 +19,8 @@
     "*robotics*",
     "*deep-research*"
   ],
+  "autoDiscovery": false,
+  "maxModelsPerTier": 3,
   "tiers": {
     "light": [
       "openai/gpt-4o-mini",

@@ -12,6 +12,8 @@ export type RouterConfig = {
   prefixes: string[]
   allow: string[]
   deny: string[]
+  autoDiscovery?: boolean
+  maxModelsPerTier?: number
   tiers: Record<Tier, string[]>
 }
 
@@ -39,9 +41,11 @@ export const DEFAULTS: RouterConfig = {
   allow: [],
   // Taste, not data: these are text+tool-capable but not coding models.
   deny: ["*robotics*", "*deep-research*"],
+  autoDiscovery: false,
+  maxModelsPerTier: 3,
   tiers: {
     light: [
-      "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6",
+      "openai/gpt-4o-mini",
       "anthropic/claude-haiku-4-5",
     ],
     standard: ["anthropic/claude-sonnet-4-6", "anthropic/claude-sonnet-5"],
@@ -145,9 +149,37 @@ export const fallbackFor = (tier: Tier, frontier: CatalogEntry[]) => {
   return frontier[Math.floor((frontier.length - 1) / 2)]
 }
 
+export const autoTiers = (catalog: CatalogEntry[], maxPerTier = 3): Record<Tier, string[]> => {
+  const frontier = frontierOf(catalog)
+
+  const light = frontier
+    .filter((e) => costBand(e.outputCost) === 0)
+    .sort((a, b) => a.outputCost - b.outputCost)
+    .slice(0, maxPerTier)
+    .map((e) => e.id)
+
+  const standard = frontier
+    .filter((e) => costBand(e.outputCost) === 1)
+    .sort((a, b) => b.outputCost - a.outputCost)
+    .slice(0, maxPerTier)
+    .map((e) => e.id)
+
+  const heavy = frontier
+    .filter((e) => costBand(e.outputCost) >= 2)
+    .sort((a, b) => b.outputCost - a.outputCost)
+    .slice(0, maxPerTier)
+    .map((e) => e.id)
+
+  return { light, standard, heavy }
+}
+
 export const resolveTier = (tier: Tier, catalog: CatalogEntry[], cfg: RouterConfig) => {
-  for (const preferred of cfg.tiers[tier] ?? []) {
-    const hit = catalog.find((e) => e.id === preferred)
+  const preferred = cfg.autoDiscovery
+    ? autoTiers(catalog, cfg.maxModelsPerTier)[tier]
+    : (cfg.tiers[tier] ?? [])
+
+  for (const id of preferred) {
+    const hit = catalog.find((e) => e.id === id)
     if (hit) return hit
   }
   return fallbackFor(tier, frontierOf(catalog))
