@@ -1,35 +1,300 @@
-# Model Router Plugin
+# opencode-model-router
 
-This plugin automatically routes requests to the appropriate AI model based on the context and user-defined commands, improving interaction efficiency while maintaining user control.
+Picks the right model for every prompt, so you stop switching models by hand.
 
-## How It Works
+You write a prompt. A small fast model reads it, decides how hard the task is, and the turn runs
+on a model that fits. Renames go to a cheap model. Architecture goes to Opus. You do nothing.
 
-1. **Session State Management:**  
-   - The plugin maintains a session-specific state that holds the current model tier (heavy, standard, light).
-   - Users can set this floor using specific commands, such as `>>heavy`, `>>standard`, or `>>light`, which will persist throughout the session.
+```
+you type a prompt
+        │
+        ├── starts with "!" or is just "yes"/"ok"? ──▶ skip, no cost, no delay
+        │
+        ▼
+  classifier  (gemini-3.5-flash-lite, ~730ms)
+        │
+        ▼
+  tier:  light  │  standard  │  heavy
+        │
+        ▼
+  your preferences in model-router.json
+  (model missing? falls back to a live model automatically)
+        │
+        ▼
+  the turn runs on that model  +  a toast tells you which one
+```
 
-2. **Explicit Overrides:**  
-   - Commands like `>>off` clear any pinned model tier, returning to the default behavior for future interactions.
-   - If a command is provided that matches a current model tier, the plugin will respect that and maintain the user’s preference.
+## Why
 
-3. **Contextual Awareness:**  
-   - The plugin recognizes when short prompts or inquiries are made, ensuring that the user does not unintentionally switch to a lighter tier unless specified.
-   - If a user prompts with a classification that falls below the current tier, the plugin will continue to apply the pinned tier.
+Most teams have a lot of models available now. Picking one by hand every time is annoying, and
+people forget, so they either burn a big model on a rename or use a small model on a migration.
 
-4. **Error Notifications:**  
-   - If a requested model does not exist or cannot be applied, the user will receive a notification indicating this.
+This plugin makes the choice for you, and stays out of the way when you want control.
 
-## How to Use
+## What it costs
 
-- To set a specific model tier for your session, simply issue the command `>>heavy`, `>>standard`, or `>>light`.
-- To clear a set tier, use `>>off`, which will allow the system to revert to its default model behavior.
-- When sending a prompt, if it is classified as a lower tier than your current setting, the plugin will ignore this classification, maintaining the established session tier.
+| | |
+|---|---|
+| Added latency | ~730ms per prompt (median), ~830ms worst case |
+| Added cost | about $0.00002 per prompt |
+| When it skips | `!` overrides, short prompts, "yes"/"ok"/"continue", repeated prompts |
 
-## Testing Instructions
+The classifier was measured at **13/14 correct** on a set of real coding prompts.
 
-To verify that the plugin works as intended:
-1. Run the included unit tests to check model routing behavior.
-2. Validate the session state management with various commands and prompts to ensure that expected behaviors are met.  
+## Requirements
 
---- 
-This plugin aims to create a user-friendly environment for interacting with AI models, ensuring consistency and control throughout the session.
+- OpenCode **1.18+**
+- Access to the Cloudflare OpenCode gateway (the `wellknown` login in
+  `~/.local/share/opencode/auth.json`). This is the internal Cloudflare setup.
+
+If that login is not there, the plugin does nothing and your normal model is used. It will not
+break your session.
+
+## Install
+
+```bash
+git clone git@github.com:7michele7/opencode-model-router.git
+cd opencode-model-router
+./install.sh
+```
+
+Then install the plugin types once, if you have not already:
+
+```bash
+cd ~/.config/opencode && npm install @opencode-ai/plugin
+```
+
+**Restart OpenCode.** Running sessions will not pick up a new plugin.
+
+To check it worked, ask for something small like `fix the typo in the README title`. You should
+see a toast such as `→ @cf/moonshotai/kimi-k2.6 · light · simple typo fix`.
+
+### Developing on it
+
+`./install.sh --link` symlinks the files instead of copying, so edits in the repo apply directly.
+
+### Uninstall
+
+```bash
+rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/model-router
+```
+
+## Config
+
+`~/.config/opencode/model-router.json` is created on your first prompt. See
+[`model-router.example.json`](./model-router.example.json).
+
+```jsonc
+{
+  "enabled": true,
+  "classifier": [
+    "google-ai-studio/gemini-3.5-flash-lite",
+    "google-ai-studio/gemini-2.5-flash-lite"
+  ],
+  "classifierTimeoutMs": 5000,
+  "toast": true,
+  "toastDurationMs": 6000,
+  "minPromptChars": 12,
+  "skipAgents": [],
+  "skipCommands": true,
+  "prefixes": [">>", "!"],
+  "allow": [],
+  "deny": ["*robotics*", "*deep-research*"],
+
+  "tiers": {
+    "light":    ["cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6", "anthropic/claude-haiku-4-5"],
+    "standard": ["anthropic/claude-sonnet-4-6", "anthropic/claude-sonnet-5"],
+    "heavy":    ["anthropic/claude-opus-5", "anthropic/claude-opus-4-6"]
+  }
+}
+```
+
+| Field | What it does |
+|---|---|
+| `enabled` | Set to `false` to turn routing off without uninstalling |
+| `classifier` | The model that reads your prompt. Must be a gateway model id |
+| `classifierTimeoutMs` | If the classifier is slow, give up and use your normal model |
+| `toast` | Show which model was picked. Keep this on (see Caveats) |
+| `toastDurationMs` | How long the toast stays up |
+| `minPromptChars` | Prompts shorter than this are not routed |
+| `skipAgents` | Agent names that should never be routed, e.g. `["review"]` |
+| `skipCommands` | Leave slash commands alone. On by default |
+| `prefixes` | Strings that mark an override. Longest match wins |
+| `allow` | Only use these models. Empty means all of them |
+| `deny` | Never use these models |
+| `tiers` | Which model you want for each tier, best first |
+
+`allow` and `deny` accept exact ids or globs: `anthropic/*`, `*haiku*`, `*-mini`.
+
+### Only use models you like
+
+By default the router can use every model OpenCode can reach, and new models are picked up
+automatically. If you want a smaller set, use `allow`:
+
+```jsonc
+"allow": ["anthropic/*", "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6"]
+```
+
+This applies to everything: tier preferences, the automatic fallback, and `!` overrides. If a
+tier preference is not in the allow list, the router falls through to the next one you listed,
+and then to a live model inside the allow list.
+
+### The tiers
+
+| Tier | For | Examples |
+|---|---|---|
+| `light` | Mechanical edits and plain questions | rename, typo, version bump, "what does this regex do" |
+| `standard` | Normal feature work in one area | add a component, write a test, fix a described bug |
+| `heavy` | Real reasoning | architecture, migrations, cross-cutting refactors, security review, unknown bugs |
+
+When the classifier is unsure between two tiers, it picks the higher one.
+
+## Slash commands are left alone
+
+If you run a command like `/review-mr`, the router does not touch it. Commands often pin their
+own `model:` or `agent:` on purpose, and overriding that would break them.
+
+This covers commands that run in a child session too (`subtask: true`), and any agent that pins
+its own model. A prompt you type yourself *after* a command in the same session is still routed
+normally.
+
+Set `"skipCommands": false` if you want commands routed as well.
+
+## Overrides
+
+Put these at the start of your prompt.
+
+| Prefix | Effect | Sticky? |
+|---|---|---|
+| `>>heavy`, `>>standard`, `>>light` | Set the tier for the rest of the session | yes |
+| `>>opus`, `>>haiku`, `>>grok`, ... | Force any model whose id contains that text | no, one message |
+| `>>off` | Clear the sticky tier and skip routing | clears it |
+
+```
+>>heavy rename this variable          # subtle work — and the session stays heavy
+>>light explain this whole system     # you just want a quick answer
+>>off do whatever                     # router stays out of it, sticky tier cleared
+```
+
+Overrides never call the classifier, so they add no delay.
+
+## Sticky tiers
+
+A tier override is a **floor**, not a one-off. Once you say `>>heavy`, the classifier can move the
+session up but never back down.
+
+```
+>>heavy how should I structure this?     opus-5      floor := heavy
+  "use the second option"                opus-5      classified light → held at heavy
+  "ok now write it"                      opus-5      classified standard → held at heavy
+>>off                                    (cleared)   free routing again
+```
+
+Why this exists: complexity is not a property of your prompt, it is inherited from the
+conversation. When a big model asks you a question, your reply is short — *"yes, option 2"* — and
+a per-message classifier reads that as trivial and drops you to the light tier. You then get a
+small model answering a question only the big model had the context to ask.
+
+The fix is structural rather than lexical. There is no attempt to detect "is this a reply to a
+question" — instead the tier is simply not allowed to decrease on its own:
+
+```
+tier = max(classified_tier, session_floor)
+```
+
+The classifier can still escalate freely, and the new tier becomes the new floor. So a session
+ratchets upward and holds. To go back down you have to say so explicitly with `>>light` or `>>off`.
+
+Short prompts that never reach the classifier at all (below `minPromptChars`) also keep the floor,
+so answering `"yes"` in a pinned session does not silently fall back to your default model.
+
+Floors are per session. Two windows do not affect each other.
+
+## Classifier fallback
+
+If `classifier` is an array, the router tries each model in order until one returns a valid tier.
+If none succeed, it falls back to the **standard** tier and shows a warning toast.
+
+Single-string `classifier` still works for backward compatibility.
+
+## Auto-discovery
+
+Set `autoDiscovery: true` and the router will ignore your `tiers` list and pick models from the live
+catalog automatically.
+
+```jsonc
+{
+  "autoDiscovery": true,
+  "maxModelsPerTier": 3
+}
+```
+
+It groups models by cost band — cheapest go to `light`, middle to `standard`, priciest to `heavy` —
+and keeps the newest model from each provider in each band. Up to `maxModelsPerTier` per tier.
+
+This is **opt-in** and off by default. Turn it on when you do not want to maintain a model list.
+Your `allow` and `deny` filters still apply, so you can exclude providers you do not want.
+
+## Caveats
+
+**The model name in the TUI footer will be wrong.** OpenCode only refreshes it when you switch
+sessions, so it keeps showing your default. The toast is your real signal. Do not turn it off
+unless you do not care which model ran.
+
+The toast appears in the **top right corner** of the TUI and stays for 6 seconds. Raise
+`toastDurationMs` if you keep missing it.
+
+**Routing is per turn, not sticky.** Every prompt is classified again. This is on purpose, so a
+follow-up architecture question is not stuck on a cheap model. Short replies like "yes" are
+skipped so they stay on whatever ran last.
+
+**Subagents are routed too.** Add their names to `skipAgents` if you do not want that.
+
+## Tests
+
+```bash
+node --experimental-strip-types --no-warnings test/core.test.ts
+```
+
+49 tests, no network needed. They run against a real captured provider payload in
+`test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
+
+## How it works
+
+The interesting part is which hook to use.
+
+`chat.params` looks like the hook for changing the model, but it is not. By the time it runs,
+the provider SDK is already chosen, and its output has no model field.
+
+`chat.message` is the one that works. OpenCode saves your user message, and then the assistant
+turn reads the model back **out of that saved message**. `chat.message` runs right before the
+save, so changing `output.message.model` there changes which model runs the turn.
+
+```
+createUserMessage()
+  ├─ plugin hook "chat.message"   ← we change the model here
+  ├─ save the user message         ← our change is written
+  └─ assistant turn reads the model back from the saved message
+```
+
+The model list is not hardcoded. It comes from `client.config.providers()` at runtime, which is
+every model your OpenCode can actually reach, with cost, context size and capabilities. The
+router drops anything that cannot do tool calls, anything that outputs images, audio or video,
+and duplicate dated ids like `claude-sonnet-4-5-20250929`. New models show up on their own.
+
+Because of that, `tiers` only holds your preferences. If a model you listed is gone, the router
+picks the newest live model in the same price band instead. Nothing to maintain when models change.
+
+Classifier decisions are cached per session, keyed on `sessionID + prompt`. The same wording in a
+different session is classified again, because the right tier depends on what came before it.
+
+### Layout
+
+```
+src/model-router.ts          the plugin: config, auth, classifier call, the hook
+src/model-router/core.ts     pure logic: catalog, filters, tier resolution, parsing
+test/core.test.ts            tests for core.ts
+```
+
+`core.ts` lives in a subfolder on purpose. OpenCode loads `plugins/*.ts` but does not look inside
+subfolders, so it is imported as a normal module instead of being treated as a second plugin.

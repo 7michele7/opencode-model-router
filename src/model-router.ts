@@ -4,6 +4,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import {
   buildCatalog,
+  clampTier,
   CLASSIFIER_SYSTEM,
   DEFAULTS,
   parseOverride,
@@ -123,6 +124,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
   let catalog: CatalogEntry[] = []
   let catalogAt = 0
   const decisions = new Map<string, Tier>()
+  const floors = new Map<string, Tier>()
 
   const pendingCommand = new Set<string>()
   const commandSessions = new Map<string, number>()
@@ -217,7 +219,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
           .trim()
 
         const override = parseOverride(prompt, cfg.prefixes)
-        if (!override && shouldSkip(prompt, cfg)) return
+        const unclassifiable = !override && shouldSkip(prompt, cfg)
 
         const models = await catalogue()
         if (!models.length) return
@@ -229,11 +231,26 @@ export const ModelRouter: Plugin = async ({ client }) => {
           notify(`→ ${entry.modelID}  ·  ${label}`)
         }
 
+        // A pinned session keeps its tier even for prompts we never send to the classifier.
+        if (unclassifiable) {
+          const floor = floors.get(input.sessionID)
+          if (!floor) return
+          const entry = resolveTier(floor, models, cfg)
+          if (entry) apply(entry, `${floor} (held)`)
+          return
+        }
+
         if (override) {
-          if (override === "off") return
+          if (override === "off") {
+            floors.delete(input.sessionID)
+            return
+          }
           if (TIERS.includes(override as Tier)) {
-            const entry = resolveTier(override as Tier, models, cfg)
-            if (entry) apply(entry, `${override} (forced)`)
+            const tier = override as Tier
+            if (floors.size > 500) floors.clear()
+            floors.set(input.sessionID, tier)
+            const entry = resolveTier(tier, models, cfg)
+            if (entry) apply(entry, `${tier} (pinned)`)
             return
           }
           const entry = models.find((m) => m.id.toLowerCase().includes(override))
@@ -245,7 +262,8 @@ export const ModelRouter: Plugin = async ({ client }) => {
         const endpoint = await compatEndpoint(auth.host, auth.token)
         if (!endpoint) return
 
-        const cached = decisions.get(prompt)
+        const cacheKey = `${input.sessionID}:${prompt}`
+        const cached = decisions.get(cacheKey)
         let decision = cached ? { tier: cached, why: "cached" } : undefined
         let fallback = false
 
@@ -263,10 +281,21 @@ export const ModelRouter: Plugin = async ({ client }) => {
         if (!decision) return
 
         if (decisions.size > 200) decisions.clear()
-        decisions.set(prompt, decision.tier)
+        decisions.set(cacheKey, decision.tier)
 
-        const entry = resolveTier(decision.tier, models, cfg)
-        if (entry) apply(entry, `${decision.tier} · ${decision.why}${fallback ? " (fallback)" : ""}`)
+        const floor = floors.get(input.sessionID)
+        const tier = clampTier(decision.tier, floor)
+        if (floors.size > 500) floors.clear()
+        floors.set(input.sessionID, tier)
+
+        const entry = resolveTier(tier, models, cfg)
+        if (!entry) return
+        apply(
+          entry,
+          tier === decision.tier
+            ? `${tier} · ${decision.why}${fallback ? " (fallback)" : ""}`
+            : `${tier} · held (classified ${decision.tier})`,
+        )
       } catch {}
     },
   }

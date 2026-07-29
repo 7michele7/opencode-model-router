@@ -28,6 +28,12 @@ export type CatalogEntry = {
 
 export const TIERS: Tier[] = ["light", "standard", "heavy"]
 
+export const tierRank = (tier: Tier) => TIERS.indexOf(tier)
+
+// Classifier decisions may only ratchet up. Explicit user overrides set the floor directly.
+export const clampTier = (tier: Tier, floor: Tier | undefined): Tier =>
+  floor && tierRank(floor) > tierRank(tier) ? floor : tier
+
 export const DEFAULTS: RouterConfig = {
   enabled: true,
   classifier: ["google-ai-studio/gemini-3.5-flash-lite", "google-ai-studio/gemini-2.5-flash-lite"],

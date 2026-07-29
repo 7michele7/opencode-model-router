@@ -9,8 +9,12 @@ import {
   shouldSkip,
   parseTier,
   parseOverride,
+  clampTier,
+  tierRank,
+  TIERS,
   DEFAULTS,
   type RouterConfig,
+  type Tier,
 } from "../src/model-router/core.ts"
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -123,6 +127,47 @@ check("auto-discovery respects maxPerTier", auto.light.length <= 3 && auto.stand
 const autoCfg = cfg({ autoDiscovery: true })
 const autoHeavy = resolveTier("heavy", catalog, autoCfg)
 check("resolveTier honours auto-discovery", auto.heavy.includes(autoHeavy?.id ?? ""), autoHeavy?.id)
+
+console.log("\n— tier ranking —")
+check("TIERS order is the rank contract", TIERS.join() === "light,standard,heavy", TIERS.join())
+check("light < standard < heavy", tierRank("light") < tierRank("standard") && tierRank("standard") < tierRank("heavy"))
+
+console.log("\n— clampTier: classifier may only ratchet up —")
+check("no floor passes tier through", clampTier("light", undefined) === "light")
+check("raises light to heavy floor", clampTier("light", "heavy") === "heavy")
+check("raises light to standard floor", clampTier("light", "standard") === "standard")
+check("raises standard to heavy floor", clampTier("standard", "heavy") === "heavy")
+check("never lowers heavy to light floor", clampTier("heavy", "light") === "heavy")
+check("never lowers standard to light floor", clampTier("standard", "light") === "standard")
+check("equal floor is a no-op", TIERS.every((t) => clampTier(t, t) === t))
+check(
+  "monotonic: result >= both inputs for all 9 pairs",
+  TIERS.every((a) => TIERS.every((b) => {
+    const r = clampTier(a, b)
+    return tierRank(r) >= tierRank(a) && tierRank(r) >= tierRank(b)
+  })),
+)
+
+console.log("\n— session floor behaviour —")
+const floors = new Map<string, Tier>()
+
+floors.set("ses_pin", "heavy")
+check("pinned heavy survives a light classification", clampTier("light", floors.get("ses_pin")) === "heavy")
+check("without a floor the downgrade reproduces", clampTier("light", floors.get("ses_none")) === "light")
+
+const esc = "ses_escalate"
+for (const c of ["light", "standard", "heavy", "light"] as Tier[]) floors.set(esc, clampTier(c, floors.get(esc)))
+check("classifier ratchets up and holds", floors.get(esc) === "heavy", floors.get(esc))
+
+floors.set("ses_off", "heavy")
+floors.delete("ses_off")
+check(">>off clears the floor", clampTier("light", floors.get("ses_off")) === "light")
+
+floors.set("ses_down", "heavy")
+floors.set("ses_down", "light")
+check(">>light lowers the floor (explicit intent wins)", clampTier("light", floors.get("ses_down")) === "light")
+
+check("floors are per-session, not global", clampTier("light", floors.get("ses_pin")) === "heavy" && clampTier("light", floors.get("ses_other")) === "light")
 
 console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
 process.exit(failed ? 1 : 0)
