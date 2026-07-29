@@ -34,6 +34,15 @@ export const tierRank = (tier: Tier) => TIERS.indexOf(tier)
 export const clampTier = (tier: Tier, floor: Tier | undefined): Tier =>
   floor && tierRank(floor) > tierRank(tier) ? floor : tier
 
+// A session is either following a tier floor or held on one exact model, never both.
+export type SessionRoute = { floor: Tier; pin?: undefined } | { pin: string; floor?: undefined }
+
+export const tierRoute = (floor: Tier): SessionRoute => ({ floor })
+export const pinRoute = (pin: string): SessionRoute => ({ pin })
+
+export const resolvePin = (route: SessionRoute | undefined, catalog: CatalogEntry[]) =>
+  route?.pin ? catalog.find((m) => m.id === route.pin) : undefined
+
 export const DEFAULTS: RouterConfig = {
   enabled: true,
   classifier: ["google-ai-studio/gemini-3.5-flash-lite", "google-ai-studio/gemini-2.5-flash-lite"],
@@ -43,6 +52,7 @@ export const DEFAULTS: RouterConfig = {
   minPromptChars: 12,
   skipAgents: [],
   skipCommands: true,
+  // "!" never arrives from the TUI (it is the shell-mode keybinding) but does work over HTTP.
   prefixes: [">>", "!"],
   allow: [],
   // Taste, not data: these are text+tool-capable but not coding models.
@@ -50,10 +60,7 @@ export const DEFAULTS: RouterConfig = {
   autoDiscovery: false,
   maxModelsPerTier: 3,
   tiers: {
-    light: [
-      "openai/gpt-4o-mini",
-      "anthropic/claude-haiku-4-5",
-    ],
+    light: ["openai/gpt-4o-mini", "anthropic/claude-haiku-4-5"],
     standard: ["anthropic/claude-sonnet-4-6", "anthropic/claude-sonnet-5"],
     heavy: ["anthropic/claude-opus-5", "anthropic/claude-opus-4-6"],
   },
@@ -61,11 +68,17 @@ export const DEFAULTS: RouterConfig = {
 
 export const CLASSIFIER_SYSTEM = `Classify a coding request into ONE tier. The user is a principal engineer working in a large TypeScript/React monorepo.
 
-light    - mechanical, single obvious edit, or a plain question. No design judgement needed. (rename, typo, version bump, formatting, "what does X do")
-standard - normal feature work in one area. Clear requirements, real code to write. (add a component, write a test, fix a described bug, add a story)
+light    - self-contained and mechanical. Answerable from general knowledge, or one obvious edit. (rename, typo, version bump, formatting, "what does useMemo do", "what is the syntax for X")
+standard - normal feature work in one area, OR any request that must read the project or the conversation before it can be answered, OR anything that rewrites an existing file. (add a component, write a test, fix a described bug, "what did we do so far", "update the README", "did you push")
 heavy    - needs real reasoning: architecture, cross-cutting refactor, migration, subtle or unknown bug, security review, tradeoff analysis, or touches many files.
 
-If unsure between two tiers, pick the HIGHER one. Reply ONLY: {"tier":"light|standard|heavy","why":"max 4 words"}`
+Rules:
+- A short prompt is NOT automatically light. Judge the work required, not the wording.
+- A question is only light if you could answer it without reading any file, the repo, or the earlier conversation.
+- Rewriting or deleting an existing file is never light.
+- If unsure between two tiers, pick the HIGHER one.
+
+Reply ONLY: {"tier":"light|standard|heavy","why":"max 4 words"}`
 
 export const CONTINUATION =
   /^(y|yes|yep|yeah|ok|okay|k|go|go on|continue|proceed|do it|next|sure|please|thanks|ty|no|nope|stop|wait|hold on|nvm)[\s.!?]*$/i

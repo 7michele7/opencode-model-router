@@ -167,16 +167,63 @@ Put these at the start of your prompt.
 | Prefix | Effect | Sticky? |
 |---|---|---|
 | `>>heavy`, `>>standard`, `>>light` | Set the tier for the rest of the session | yes |
-| `>>opus`, `>>haiku`, `>>grok`, ... | Force any model whose id contains that text | no, one message |
-| `>>off` | Clear the sticky tier and skip routing | clears it |
+| `>>opus`, `>>haiku`, `>>grok`, ... | Hold that exact model for the rest of the session | yes |
+| `>>off` | Clear whatever is set and go back to auto | clears it |
 
 ```
 >>heavy rename this variable          # subtle work — and the session stays heavy
->>light explain this whole system     # you just want a quick answer
->>off do whatever                     # router stays out of it, sticky tier cleared
+>>opus keep going                     # every later turn stays on opus too
+>>off do whatever                     # back to automatic routing
 ```
 
 Overrides never call the classifier, so they add no delay.
+
+A session is in exactly one of three states, and setting one clears the others:
+
+```
+auto            classify every prompt          (default)
+tier floor      >>heavy / >>standard / >>light  classifier may go up, never down
+model pin       >>opus / >>haiku / ...          one exact model, classifier not called
+```
+
+Because a model pin skips classification entirely, it also removes the ~700ms the classifier
+costs. Pinning is the fastest mode.
+
+If a pinned model disappears from the catalog, the pin is dropped and the session goes back to
+automatic routing rather than failing.
+
+## What "light" means
+
+The tier names describe **how much work the request needs**, not how the request is worded. This
+distinction is the whole game and it is easy to get wrong.
+
+An early version of the classifier prompt described the light tier as *"mechanical, single obvious
+edit, or a plain question"*. That last clause is the trap. These two are grammatically identical:
+
+```
+"what does useMemo do"        answerable from general knowledge   -> light
+"what did we do so far?"      needs the repo and the whole convo  -> not light
+```
+
+The classifier obediently sent both to the smallest model, along with *"update the README"* — which
+a small model then rewrote from scratch, deleting 254 lines it had never read.
+
+So the rule is now about **context required** and **blast radius**, not grammar:
+
+- A question is only light if it can be answered without reading any file, the repo, or the
+  earlier conversation.
+- Rewriting or deleting an existing file is never light.
+- A short prompt is not automatically light.
+- Ties round up.
+
+On an 18-prompt eval set this moved accuracy from **11/18 to 17/18**. The one remaining miss is
+`"format this file with prettier"`, which comes back `standard` because it rewrites a file. That is
+left alone on purpose — the costs are not symmetric:
+
+```
+too cautious on "format this file"   a fraction of a cent
+too eager on "update the README"     254 deleted lines
+```
 
 ## Sticky tiers
 
@@ -209,6 +256,10 @@ Short prompts that never reach the classifier at all (below `minPromptChars`) al
 so answering `"yes"` in a pinned session does not silently fall back to your default model.
 
 Floors are per session. Two windows do not affect each other.
+
+Note that tier floors and the classifier taxonomy solve two halves of the same problem. The
+taxonomy stops a *fresh* conversational prompt going to the wrong tier; the floor stops a
+*follow-up* being judged on its own without the context that produced it.
 
 ## Classifier fallback
 
@@ -244,9 +295,13 @@ unless you do not care which model ran.
 The toast appears in the **top right corner** of the TUI and stays for 6 seconds. Raise
 `toastDurationMs` if you keep missing it.
 
-**Routing is per turn, not sticky.** Every prompt is classified again. This is on purpose, so a
-follow-up architecture question is not stuck on a cheap model. Short replies like "yes" are
-skipped so they stay on whatever ran last.
+**Routing is per turn, but it cannot go backwards.** Every prompt is classified again, so a
+follow-up architecture question is never stuck on a cheap model. What changed is the other
+direction: the tier can no longer *drop* on its own. See [Sticky tiers](#sticky-tiers).
+
+**`!` as a prefix does not work in the TUI.** `!` is the OpenCode shell-mode keybinding, so it is
+swallowed before any plugin sees it. It stays in the default `prefixes` because it does work for
+HTTP and SDK clients. In the TUI, use `>>`.
 
 **Subagents are routed too.** Add their names to `skipAgents` if you do not want that.
 
@@ -256,8 +311,11 @@ skipped so they stay on whatever ran last.
 node --experimental-strip-types --no-warnings test/core.test.ts
 ```
 
-49 tests, no network needed. They run against a real captured provider payload in
+82 tests, no network needed. They run against a real captured provider payload in
 `test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
+
+The classifier taxonomy has its own regression tests. They assert the light tier is not defined by
+grammar, because that single clause was worth 6 misclassifications out of 18.
 
 ## How it works
 

@@ -11,9 +11,14 @@ import {
   parseOverride,
   clampTier,
   tierRank,
+  CLASSIFIER_SYSTEM,
+  pinRoute,
+  tierRoute,
+  resolvePin,
   TIERS,
   DEFAULTS,
   type RouterConfig,
+  type SessionRoute,
   type Tier,
 } from "../src/model-router/core.ts"
 
@@ -168,6 +173,48 @@ floors.set("ses_down", "light")
 check(">>light lowers the floor (explicit intent wins)", clampTier("light", floors.get("ses_down")) === "light")
 
 check("floors are per-session, not global", clampTier("light", floors.get("ses_pin")) === "heavy" && clampTier("light", floors.get("ses_other")) === "light")
+
+console.log("\n— sticky model pins —")
+const someModel = catalog.find((m) => m.id === "anthropic/claude-opus-5")!
+check("resolvePin finds a pinned model", resolvePin(pinRoute(someModel.id), catalog)?.id === someModel.id)
+check("resolvePin on a tier route returns nothing", resolvePin(tierRoute("heavy"), catalog) === undefined)
+check("resolvePin on no route returns nothing", resolvePin(undefined, catalog) === undefined)
+check(
+  "resolvePin returns nothing when the model left the catalog",
+  resolvePin(pinRoute("anthropic/claude-that-was-retired"), catalog) === undefined,
+)
+
+const routes = new Map<string, SessionRoute>()
+
+routes.set("ses_pin_model", pinRoute(someModel.id))
+check("a pinned model survives many turns", [1, 2, 3].every(() => resolvePin(routes.get("ses_pin_model"), catalog)?.id === someModel.id))
+
+routes.set("ses_mode", pinRoute(someModel.id))
+routes.set("ses_mode", tierRoute("light"))
+check("switching to a tier clears the model pin", resolvePin(routes.get("ses_mode"), catalog) === undefined)
+check("switching to a tier sets the floor", routes.get("ses_mode")?.floor === "light")
+
+routes.set("ses_mode2", tierRoute("heavy"))
+routes.set("ses_mode2", pinRoute(someModel.id))
+check("switching to a model clears the floor", routes.get("ses_mode2")?.floor === undefined)
+
+routes.set("ses_clear", pinRoute(someModel.id))
+routes.delete("ses_clear")
+check(">>off clears a model pin too", resolvePin(routes.get("ses_clear"), catalog) === undefined)
+
+check("floor and pin are mutually exclusive by construction", [tierRoute("heavy"), pinRoute("x")].every((r) => !(r.floor && r.pin)))
+
+console.log("\n— classifier taxonomy —")
+// Regression guard. "or a plain question" in the light tier sent every conversational prompt
+// ("what did we do so far", "update the README") to the smallest model. Measured 11/18 -> 17/18
+// on the eval set after removing it. Do not reintroduce a bare "question -> light" rule.
+check("light tier does not classify on grammar", !/plain question/i.test(CLASSIFIER_SYSTEM))
+check("judges work required, not wording", /NOT automatically light/i.test(CLASSIFIER_SYSTEM))
+check("questions needing the repo are not light", /without reading any file/i.test(CLASSIFIER_SYSTEM))
+check("rewriting a file is not light", /never light/i.test(CLASSIFIER_SYSTEM))
+check("ties round up", /HIGHER one/i.test(CLASSIFIER_SYSTEM))
+check("still asks for strict json", /Reply ONLY/.test(CLASSIFIER_SYSTEM))
+check("names all three tiers", TIERS.every((t) => CLASSIFIER_SYSTEM.includes(t)))
 
 console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
 process.exit(failed ? 1 : 0)

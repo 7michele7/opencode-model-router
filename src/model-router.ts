@@ -9,11 +9,15 @@ import {
   DEFAULTS,
   parseOverride,
   parseTier,
+  pinRoute,
+  resolvePin,
   resolveTier,
   shouldSkip,
+  tierRoute,
   TIERS,
   type CatalogEntry,
   type RouterConfig,
+  type SessionRoute,
   type Tier,
 } from "./model-router/core.ts"
 
@@ -124,7 +128,12 @@ export const ModelRouter: Plugin = async ({ client }) => {
   let catalog: CatalogEntry[] = []
   let catalogAt = 0
   const decisions = new Map<string, Tier>()
-  const floors = new Map<string, Tier>()
+  const routes = new Map<string, SessionRoute>()
+
+  const remember = (sessionID: string, route: SessionRoute) => {
+    if (routes.size > 500) routes.clear()
+    routes.set(sessionID, route)
+  }
 
   const pendingCommand = new Set<string>()
   const commandSessions = new Map<string, number>()
@@ -231,31 +240,41 @@ export const ModelRouter: Plugin = async ({ client }) => {
           notify(`→ ${entry.modelID}  ·  ${label}`)
         }
 
-        // A pinned session keeps its tier even for prompts we never send to the classifier.
+        const route = routes.get(input.sessionID)
+
+        // An exact model pin wins over everything and needs no classification.
+        const pinned = resolvePin(route, models)
+        if (pinned && !override) {
+          apply(pinned, "pinned")
+          return
+        }
+        if (route?.pin && !pinned) routes.delete(input.sessionID)
+
+        // A session with a tier floor keeps it even for prompts we never send to the classifier.
         if (unclassifiable) {
-          const floor = floors.get(input.sessionID)
-          if (!floor) return
-          const entry = resolveTier(floor, models, cfg)
-          if (entry) apply(entry, `${floor} (held)`)
+          if (!route?.floor) return
+          const entry = resolveTier(route.floor, models, cfg)
+          if (entry) apply(entry, `${route.floor} (held)`)
           return
         }
 
         if (override) {
           if (override === "off") {
-            floors.delete(input.sessionID)
+            routes.delete(input.sessionID)
             return
           }
           if (TIERS.includes(override as Tier)) {
             const tier = override as Tier
-            if (floors.size > 500) floors.clear()
-            floors.set(input.sessionID, tier)
+            remember(input.sessionID, tierRoute(tier))
             const entry = resolveTier(tier, models, cfg)
             if (entry) apply(entry, `${tier} (pinned)`)
             return
           }
           const entry = models.find((m) => m.id.toLowerCase().includes(override))
-          if (entry) apply(entry, "forced")
-          else notify(`no model matches "${override}"`, "warning")
+          if (entry) {
+            remember(input.sessionID, pinRoute(entry.id))
+            apply(entry, "pinned")
+          } else notify(`no model matches "${override}"`, "warning")
           return
         }
 
@@ -283,10 +302,8 @@ export const ModelRouter: Plugin = async ({ client }) => {
         if (decisions.size > 200) decisions.clear()
         decisions.set(cacheKey, decision.tier)
 
-        const floor = floors.get(input.sessionID)
-        const tier = clampTier(decision.tier, floor)
-        if (floors.size > 500) floors.clear()
-        floors.set(input.sessionID, tier)
+        const tier = clampTier(decision.tier, route?.floor)
+        remember(input.sessionID, tierRoute(tier))
 
         const entry = resolveTier(tier, models, cfg)
         if (!entry) return
