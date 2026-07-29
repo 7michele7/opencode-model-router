@@ -18,7 +18,7 @@
   ],
   "tiers": {
     "light": [
-      "cloudflare-workers-ai/@cf/moonshotai/kimi-k2.6",
+      "openai/gpt-4o-mini",
       "anthropic/claude-haiku-4-5"
     ],
     "standard": [
