@@ -94,6 +94,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
   "minPromptChars": 12,
   "skipAgents": [],
   "skipCommands": true,
+  "prefixes": [">>", "!"],
   "allow": [],
   "deny": ["*robotics*", "*deep-research*"],
 
@@ -115,6 +116,7 @@ rm -rf ~/.config/opencode/plugins/model-router.ts ~/.config/opencode/plugins/mod
 | `minPromptChars` | Prompts shorter than this are not routed |
 | `skipAgents` | Agent names that should never be routed, e.g. `["review"]` |
 | `skipCommands` | Leave slash commands alone. On by default |
+| `prefixes` | Strings that mark an override. Longest match wins |
 | `allow` | Only use these models. Empty means all of them |
 | `deny` | Never use these models |
 | `tiers` | Which model you want for each tier, best first |
@@ -161,17 +163,37 @@ Put these at the start of your prompt.
 
 | Prefix | Effect |
 |---|---|
-| `!heavy`, `!standard`, `!light` | Force a tier |
-| `!opus`, `!haiku`, `!grok`, ... | Force any model whose id contains that text |
-| `!off` | Skip routing, use your normal model |
+| `>>heavy`, `>>standard`, `>>light` | Force a tier |
+| `>>opus`, `>>haiku`, `>>grok`, ... | Force any model whose id contains that text |
+| `>>off` | Skip routing, use your normal model |
 
 ```
-!heavy rename this variable          # you know it is subtle, force the big model
-!light explain this whole system     # you just want a quick answer
-!off do whatever                     # router stays out of it
+>>heavy rename this variable          # you know it is subtle, force the big model
+>>light explain this whole system     # you just want a quick answer
+>>off do whatever                     # router stays out of it
 ```
 
 Overrides never call the classifier, so they add no delay.
+
+### Why `>>` and not `!`
+
+Do not use `!` in the TUI. OpenCode binds `!` as the first character to **shell mode**, so the
+prompt never reaches this plugin:
+
+```js
+// packages/tui/src/component/prompt/index.tsx
+enabled: store.mode === "normal" && input?.visualCursor.offset === 0
+bindings: [{ key: "!", desc: "Shell mode", ... }]
+```
+
+`@` and `/` are taken too (file autocomplete and slash commands). `>>` is free.
+
+`!` still works for HTTP API clients, so it stays in the default `prefixes` list. Change
+`prefixes` if you want something else:
+
+```jsonc
+"prefixes": ["++"]
+```
 
 ## Caveats
 
@@ -194,7 +216,7 @@ skipped so they stay on whatever ran last.
 node --experimental-strip-types --no-warnings test/core.test.ts
 ```
 
-31 tests, no network needed. They run against a real captured provider payload in
+43 tests, no network needed. They run against a real captured provider payload in
 `test/fixtures/providers.json`, so they check the actual data shape OpenCode returns.
 
 ## How it works

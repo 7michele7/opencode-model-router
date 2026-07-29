@@ -7,6 +7,7 @@ import {
   resolveTier,
   shouldSkip,
   parseTier,
+  parseOverride,
   DEFAULTS,
   type RouterConfig,
 } from "../src/model-router/core.ts"
@@ -77,6 +78,21 @@ for (const word of ["yes", "ok", "continue", "go on", "thanks"]) {
 }
 check("skips short prompts", shouldSkip("fix it", cfg()))
 check("routes real prompts", !shouldSkip("refactor the routing layer to react router v7", cfg()))
+
+console.log("\n— override prefixes —")
+const P = DEFAULTS.prefixes
+check("\">>heavy\" -> heavy", parseOverride(">>heavy do the thing", P) === "heavy", parseOverride(">>heavy x", P))
+check("\">>off\" -> off", parseOverride(">>off x", P) === "off")
+check("\">>opus\" -> opus", parseOverride(">>opus x", P) === "opus")
+check("\"!heavy\" still works for HTTP clients", parseOverride("!heavy x", P) === "heavy")
+check("uppercase is lowercased", parseOverride(">>HEAVY x", P) === "heavy")
+check("prefix with no args", parseOverride(">>heavy", P) === "heavy")
+check("longer prefix wins", parseOverride(">>heavy x", [">", ">>"]) === "heavy")
+check("plain prompt is not an override", parseOverride("refactor the routing layer", P) === undefined)
+check("bare prefix is not an override", parseOverride(">> ", P) === undefined)
+check("mid-prompt prefix ignored", parseOverride("compare a >>heavy thing", P) === undefined)
+check("@file is not an override", parseOverride("@utils.ts explain", P) === undefined)
+check("/command is not an override", parseOverride("/review-mr 123", P) === undefined)
 
 console.log("\n— classifier parsing —")
 check("parses bare json", parseTier('{"tier":"light","why":"rename"}')?.tier === "light")

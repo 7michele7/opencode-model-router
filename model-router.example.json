@@ -7,6 +7,10 @@
   "minPromptChars": 12,
   "skipAgents": [],
   "skipCommands": true,
+  "prefixes": [
+    ">>",
+    "!"
+  ],
   "allow": [],
   "deny": [
     "*robotics*",

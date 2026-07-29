@@ -9,6 +9,7 @@ export type RouterConfig = {
   minPromptChars: number
   skipAgents: string[]
   skipCommands: boolean
+  prefixes: string[]
   allow: string[]
   deny: string[]
   tiers: Record<Tier, string[]>
@@ -34,6 +35,7 @@ export const DEFAULTS: RouterConfig = {
   minPromptChars: 12,
   skipAgents: [],
   skipCommands: true,
+  prefixes: [">>", "!"],
   allow: [],
   // Taste, not data: these are text+tool-capable but not coding models.
   deny: ["*robotics*", "*deep-research*"],
@@ -161,6 +163,17 @@ export const parseTier = (raw: string): { tier: Tier; why: string } | undefined 
   } catch {
     return undefined
   }
+}
+
+// "!" is bound to shell mode by the TUI when typed as the first character, so it never reaches
+// this plugin from the TUI. It stays supported for HTTP clients. "@" and "/" open autocomplete.
+export const parseOverride = (prompt: string, prefixes: string[]): string | undefined => {
+  for (const prefix of [...prefixes].sort((a, b) => b.length - a.length)) {
+    if (!prefix || !prompt.startsWith(prefix)) continue
+    const token = prompt.slice(prefix.length).match(/^(\S+)/)?.[1]
+    if (token) return token.toLowerCase()
+  }
+  return undefined
 }
 
 export const shouldSkip = (prompt: string, cfg: RouterConfig) =>

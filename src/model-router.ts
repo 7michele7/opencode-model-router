@@ -6,6 +6,7 @@ import {
   buildCatalog,
   CLASSIFIER_SYSTEM,
   DEFAULTS,
+  parseOverride,
   parseTier,
   resolveTier,
   shouldSkip,
@@ -200,7 +201,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
           .join("\n")
           .trim()
 
-        const override = prompt.match(/^!(\S+)/)?.[1]?.toLowerCase()
+        const override = parseOverride(prompt, cfg.prefixes)
         if (!override && shouldSkip(prompt, cfg)) return
 
         const models = await catalogue()
@@ -222,7 +223,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
           }
           const entry = models.find((m) => m.id.toLowerCase().includes(override))
           if (entry) apply(entry, "forced")
-          else notify(`no model matches "!${override}"`, "warning")
+          else notify(`no model matches "${override}"`, "warning")
           return
         }
 
