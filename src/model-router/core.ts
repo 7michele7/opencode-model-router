@@ -36,9 +36,15 @@ export const clampTier = (tier: Tier, floor: Tier | undefined): Tier =>
   floor && tierRank(floor) > tierRank(tier) ? floor : tier
 
 // A session is either following a tier floor or held on one exact model, never both.
-export type SessionRoute = { floor: Tier; pin?: undefined } | { pin: string; floor?: undefined }
+// explicit marks a floor the user set with >>tier. An inferred floor (written after each
+// successful classification) is not explicit. The distinction only matters when the classifier
+// fails: an explicit floor is a user instruction and should be honoured; an inferred floor is
+// just the last known tier and should not override the user's own default model.
+export type SessionRoute =
+  | { floor: Tier; explicit: boolean; pin?: undefined }
+  | { pin: string; floor?: undefined; explicit?: undefined }
 
-export const tierRoute = (floor: Tier): SessionRoute => ({ floor })
+export const tierRoute = (floor: Tier, explicit: boolean): SessionRoute => ({ floor, explicit })
 export const pinRoute = (pin: string): SessionRoute => ({ pin })
 
 export const resolvePin = (route: SessionRoute | undefined, catalog: CatalogEntry[]) =>

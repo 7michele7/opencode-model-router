@@ -177,7 +177,7 @@ check("floors are per-session, not global", clampTier("light", floors.get("ses_p
 console.log("\n— sticky model pins —")
 const someModel = catalog.find((m) => m.id === "anthropic/claude-opus-5")!
 check("resolvePin finds a pinned model", resolvePin(pinRoute(someModel.id), catalog)?.id === someModel.id)
-check("resolvePin on a tier route returns nothing", resolvePin(tierRoute("heavy"), catalog) === undefined)
+check("resolvePin on a tier route returns nothing", resolvePin(tierRoute("heavy", false), catalog) === undefined)
 check("resolvePin on no route returns nothing", resolvePin(undefined, catalog) === undefined)
 check(
   "resolvePin returns nothing when the model left the catalog",
@@ -190,11 +190,11 @@ routes.set("ses_pin_model", pinRoute(someModel.id))
 check("a pinned model survives many turns", [1, 2, 3].every(() => resolvePin(routes.get("ses_pin_model"), catalog)?.id === someModel.id))
 
 routes.set("ses_mode", pinRoute(someModel.id))
-routes.set("ses_mode", tierRoute("light"))
+routes.set("ses_mode", tierRoute("light", false))
 check("switching to a tier clears the model pin", resolvePin(routes.get("ses_mode"), catalog) === undefined)
 check("switching to a tier sets the floor", routes.get("ses_mode")?.floor === "light")
 
-routes.set("ses_mode2", tierRoute("heavy"))
+routes.set("ses_mode2", tierRoute("heavy", false))
 routes.set("ses_mode2", pinRoute(someModel.id))
 check("switching to a model clears the floor", routes.get("ses_mode2")?.floor === undefined)
 
@@ -202,7 +202,7 @@ routes.set("ses_clear", pinRoute(someModel.id))
 routes.delete("ses_clear")
 check(">>off clears a model pin too", resolvePin(routes.get("ses_clear"), catalog) === undefined)
 
-check("floor and pin are mutually exclusive by construction", [tierRoute("heavy"), pinRoute("x")].every((r) => !(r.floor && r.pin)))
+check("floor and pin are mutually exclusive by construction", [tierRoute("heavy", false), pinRoute("x")].every((r) => !(r.floor && r.pin)))
 
 console.log("\n— classifier taxonomy —")
 // Regression guard. "or a plain question" in the light tier sent every conversational prompt
@@ -215,6 +215,36 @@ check("rewriting a file is not light", /never light/i.test(CLASSIFIER_SYSTEM))
 check("ties round up", /HIGHER one/i.test(CLASSIFIER_SYSTEM))
 check("still asks for strict json", /Reply ONLY/.test(CLASSIFIER_SYSTEM))
 check("names all three tiers", TIERS.every((t) => CLASSIFIER_SYSTEM.includes(t)))
+
+console.log("\n— explicit floor flag —")
+check(">>tier sets explicit=true", tierRoute("heavy", true).explicit === true)
+check("ratchet write sets explicit=false", tierRoute("heavy", false).explicit === false)
+check("pin has no explicit flag", pinRoute("x").explicit === undefined)
+
+// Regression: before the flag, route?.floor was truthy after every successful classification,
+// so the failure path treated an inferred floor as if the user had typed >>tier.
+// Scenario: no override ever typed, classifier down on turn 3.
+//   turn 1: down     -> default (correct)
+//   turn 2: light    -> haiku, floor := light (inferred, explicit=false)
+//   turn 3: down     -> should be default, was haiku
+const inferredRoute: SessionRoute = tierRoute("light", false)
+const explicitRoute: SessionRoute = tierRoute("heavy", true)
+check("inferred floor must not be honoured on failure", !(inferredRoute.floor && inferredRoute.explicit))
+check("explicit floor is honoured on failure", !!(explicitRoute.floor && explicitRoute.explicit))
+
+// The ratchet must preserve explicit=true through tier escalation.
+// If >>heavy is set and the classifier returns standard, the floor rises but stays explicit.
+const preserved = tierRoute(
+  clampTier("standard", explicitRoute.floor),
+  explicitRoute.explicit ?? false,
+)
+check("ratchet preserves explicit flag from a user-set floor", preserved.explicit === true)
+check("ratchet still escalates the tier", preserved.floor === "heavy")
+
+// After >>off, no route — the next inferred floor must not be explicit.
+const afterOff: SessionRoute | undefined = undefined
+const inferredAfterOff = tierRoute("light", afterOff?.explicit ?? false)
+check("first inferred floor after >>off is not explicit", inferredAfterOff.explicit === false)
 
 console.log("\n— classifier failure —")
 check("defaults to leaving the user's model alone", failureAction(cfg()) === "default")

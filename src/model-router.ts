@@ -210,6 +210,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
   // Errors are forced through even with toast: false. Silently doing nothing is the one case the
   // user has to know about, since it means the router is not routing.
   const notify = (message: string, variant: "info" | "warning" | "error" = "info") => {
+    if (variant === "error") console.error(`[model-router] ${message}`)
     if (!cfg.toast && variant !== "error") return
     const duration = variant === "error" ? Math.max(cfg.toastDurationMs, 10000) : cfg.toastDurationMs
     client.tui.showToast({ body: { message, variant, duration } }).catch(() => {})
@@ -264,9 +265,9 @@ export const ModelRouter: Plugin = async ({ client }) => {
         }
         if (route?.pin && !pinned) routes.delete(input.sessionID)
 
-        // A session with a tier floor keeps it even for prompts we never send to the classifier.
+        // A session with an explicit tier floor keeps it even for prompts we never classify.
         if (unclassifiable) {
-          if (!route?.floor) return
+          if (!route?.floor || !route.explicit) return
           const entry = resolveTier(route.floor, models, cfg)
           if (entry) apply(entry, `${route.floor} (held)`)
           return
@@ -279,7 +280,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
           }
           if (TIERS.includes(override as Tier)) {
             const tier = override as Tier
-            remember(input.sessionID, tierRoute(tier))
+            remember(input.sessionID, tierRoute(tier, true))
             const entry = resolveTier(tier, models, cfg)
             if (entry) apply(entry, `${tier} (pinned)`)
             return
@@ -308,7 +309,7 @@ export const ModelRouter: Plugin = async ({ client }) => {
           if (!result.tier) {
             const why = result.errors?.length ? result.errors.join(" · ") : "unknown"
 
-            if (route?.floor) {
+            if (route?.floor && route.explicit) {
               const held = resolveTier(route.floor, models, cfg)
               if (held) apply(held, `${route.floor} (held)`)
               notify(`classifier down · holding ${route.floor} · ${why}`, "error")
@@ -334,7 +335,9 @@ export const ModelRouter: Plugin = async ({ client }) => {
         decisions.set(cacheKey, decision.tier)
 
         const tier = clampTier(decision.tier, route?.floor)
-        remember(input.sessionID, tierRoute(tier))
+        // Preserve the explicit flag if the floor was user-set — the ratchet may raise the tier
+        // but it must not convert a user instruction into an inferred floor.
+        remember(input.sessionID, tierRoute(tier, route?.explicit ?? false))
 
         const entry = resolveTier(tier, models, cfg)
         if (!entry) return
