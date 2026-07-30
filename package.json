@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --experimental-strip-types --no-warnings test/core.test.ts",
-    "install-plugin": "./install.sh"
+    "install-plugin": "./install.sh",
+    "test:e2e": "node --experimental-strip-types --no-warnings test/failure.e2e.ts"
   }
 }
