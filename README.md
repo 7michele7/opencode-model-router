@@ -49,8 +49,12 @@ break your session.
 ```bash
 git clone git@github.com:7michele7/opencode-model-router.git
 cd opencode-model-router
-./install.sh
+./install.sh --link
 ```
+
+`--link` symlinks the plugin files instead of copying them. With symlinks, `git pull` is all you
+ever need to update — no reinstall. Without `--link`, you have to re-run `./install.sh` after
+every pull.
 
 Then install the plugin types once, if you have not already:
 
@@ -63,9 +67,17 @@ cd ~/.config/opencode && npm install @opencode-ai/plugin
 To check it worked, ask for something small like `fix the typo in the README title`. You should
 see a toast such as `→ gpt-4o-mini · light · simple typo fix`.
 
+### Updating
+
+```bash
+git pull
+```
+
+That's it if you installed with `--link`. If you used plain `./install.sh`, re-run it after pulling.
+
 ### Developing on it
 
-`./install.sh --link` symlinks the files instead of copying, so edits in the repo apply directly.
+Same as using it — `--link` means your edits in the repo apply directly without reinstalling.
 
 ### Uninstall
 
