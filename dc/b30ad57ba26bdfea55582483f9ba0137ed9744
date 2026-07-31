@@ -1,0 +1,19 @@
+README.md
+  s_3a0cfb52497181::t_5a10eec3d1b70b 40-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "dcb30ad57ba26bdfea55582483f9ba0137ed9744",
+  "prompts": {},
+  "sessions": {
+    "s_3a0cfb52497181": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0513bf207ffeSzmIK0s0WRNKSg",
+        "model": "gpt-4o-mini"
+      },
+      "human_author": "michi <michi@cloudflare.com>"
+    }
+  }
+}
