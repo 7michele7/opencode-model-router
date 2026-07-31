@@ -236,13 +236,26 @@ export const ModelRouter: Plugin = async ({ client }) => {
         const target = output.message?.model
         if (!target) return
 
-        const prompt = (output.parts ?? [])
-          .filter((p: any) => p.type === "text" && typeof p.text === "string")
+        const textParts = (output.parts ?? []).filter(
+          (p: any) => p.type === "text" && typeof p.text === "string",
+        )
+        const prompt = textParts
           .map((p: any) => p.text)
           .join("\n")
           .trim()
 
         const override = parseOverride(prompt, cfg.prefixes)
+
+        // Suppress the override command from the model's context. Without this the model sees
+        // ">>off" or ">>heavy" and responds to it as if it were a prompt, since the hook mutates
+        // the model but cannot swallow the message. TextPart.ignored is checked by the OpenCode
+        // message assembler before building the context sent to the LLM.
+        if (override) {
+          for (const p of textParts as any[]) {
+            const pfx = cfg.prefixes.find((pre) => p.text.trimStart().startsWith(pre))
+            if (pfx) p.ignored = true
+          }
+        }
         const unclassifiable = !override && shouldSkip(prompt, cfg)
 
         const models = await catalogue()

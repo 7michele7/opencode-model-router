@@ -272,5 +272,32 @@ check(
   `${outage.message.model.modelID} — held the inferred "light" floor instead of failing open`,
 )
 
+// ===================== 9. override commands are hidden from the model
+// The hook sets TextPart.ignored = true on any part that starts with a prefix. The OpenCode
+// message assembler skips parts where ignored === true, so the model never sees ">>off" or
+// ">>heavy" as text.
+console.log("\n— override commands are hidden from the model —")
+writeConfig()
+hooks = await ModelRouter({ client: makeClient() } as any)
+
+const overrideParts = [
+  { type: "text", text: ">>off" },
+  { type: "text", text: ">>heavy plan the migration" },
+  { type: "text", text: ">>haiku keep going" },
+  { type: "text", text: "just a normal prompt" },
+  { type: "text", text: "  >>heavy leading whitespace" },
+]
+for (const p of overrideParts) {
+  script = [{ status: 200, tier: "standard" }]
+  const t = { message: { model: { ...SENTINEL } }, parts: [p] }
+  await hooks["chat.message"]({ sessionID: "ses_suppress_" + p.text.slice(0, 8), agent: "build" }, t)
+}
+
+check(">>off is marked ignored", (overrideParts[0] as any).ignored === true, String((overrideParts[0] as any).ignored))
+check(">>heavy prompt is marked ignored", (overrideParts[1] as any).ignored === true, String((overrideParts[1] as any).ignored))
+check(">>model pin is marked ignored", (overrideParts[2] as any).ignored === true, String((overrideParts[2] as any).ignored))
+check("plain prompt is NOT marked ignored", (overrideParts[3] as any).ignored !== true, String((overrideParts[3] as any).ignored))
+check("leading-whitespace override is marked ignored", (overrideParts[4] as any).ignored === true, String((overrideParts[4] as any).ignored))
+
 console.log(`\n${failed === 0 ? "PASS" : "FAIL"} — ${passed} passed, ${failed} failed\n`)
 process.exit(failed ? 1 : 0)
