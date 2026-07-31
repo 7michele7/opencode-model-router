@@ -37,8 +37,9 @@ Measured at **17/18** on a set of real coding prompts.
 ## Requirements
 
 - OpenCode **1.18+**
-- Access to the Cloudflare OpenCode gateway (the `wellknown` login in
-  `~/.local/share/opencode/auth.json`). This is the internal Cloudflare setup.
+- Access to the Cloudflare OpenCode gateway. The plugin looks for a `wellknown` entry in
+  `~/.local/share/opencode/auth.json` — if you can use OpenCode with Cloudflare-hosted models,
+  you already have this.
 
 If that login is not there, the plugin does nothing and your normal model is used. It will not
 break your session.
